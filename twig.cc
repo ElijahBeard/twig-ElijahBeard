@@ -34,11 +34,11 @@ void print_timestamp(uint32_t ts_secs, uint32_t ts_usecs) {
             ts_usecs);
 }
 
-int read_pcap_header(int fd, pcap_file_header file_header){
+int read_pcap_header(int fd_w, pcap_file_header file_header){
     struct iovec iov[1];
     iov[0].iov_base = &file_header;
     iov[0].iov_len = sizeof(file_header);
-    ssize_t bytes_read = readv(fd, iov, 1);
+    ssize_t bytes_read = readv(fd_w, iov, 1);
     if (bytes_read == 0) {
         return 0;
     }
@@ -75,13 +75,7 @@ int read_pcap_header(int fd, pcap_file_header file_header){
 
 }
 
-void icmp_respond(pcap_pkthdr &packet_header, char *packet_data){
-    int fd_2 = open(dot_dmp, O_WRONLY | O_APPEND);
-    if (fd_2 < 0) {
-        perror("open");
-        exit(1);
-    }
-
+void icmp_respond(int fd_w, pcap_pkthdr &packet_header, char *packet_data){
     char response_data[65536];
     size_t packet_length = packet_header.caplen;
     memcpy(response_data, packet_data, packet_length);
@@ -96,8 +90,8 @@ void icmp_respond(pcap_pkthdr &packet_header, char *packet_data){
     // create packet header
     struct timeval now;
     gettimeofday(&now,NULL);
-    reply_packet_header.caplen = packet_header.caplen;
-    reply_packet_header.len = packet_header.len;
+    reply_packet_header.caplen = packet_header.caplen;    // this has changed
+    reply_packet_header.len = packet_header.len;    // this has changed
     reply_packet_header.ts_secs = now.tv_sec;
     reply_packet_header.ts_usecs = now.tv_usec;
     
@@ -107,7 +101,7 @@ void icmp_respond(pcap_pkthdr &packet_header, char *packet_data){
     memcpy(tmp_mac, eth_response->dst, 6);
     memcpy(eth_response->dst, eth_response->src, 6);
     memcpy(eth_response->src, tmp_mac, 6);
-            
+    
     // swap ip
     uint32_t tmp = ip_response->dest;
     ip_response->dest = ip_response->src;
@@ -128,7 +122,7 @@ void icmp_respond(pcap_pkthdr &packet_header, char *packet_data){
     iov[0].iov_len = sizeof(reply_packet_header);
     iov[1].iov_base = &response_data;
     iov[1].iov_len = packet_length;
-    ssize_t bytes_written = writev(fd_2, iov, 2);
+    ssize_t bytes_written = writev(fd_w, iov, 2);
     // check ip
     if (debug) {
         printf("IP Header Bytes:\n");
@@ -150,10 +144,25 @@ void icmp_respond(pcap_pkthdr &packet_header, char *packet_data){
         exit (-1);
     }
 
-    close(fd_2);
+
+    // temp debug area:
+        //printf("Sending reply to IP: %s\n", inet_ntoa(*(in_addr*)&ip_response->dest));
+        printf("          MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
+        eth_response->dst[0], eth_response->dst[1], eth_response->dst[2],
+        eth_response->dst[3], eth_response->dst[4], eth_response->dst[5]);
+        printf("Request caplen=%u len=%u\n", packet_header.caplen, packet_header.len);
+        printf("Reply caplen=%u len=%u\n", reply_packet_header.caplen, reply_packet_header.len);
+        printf("Will write back %zd total bytes (caplen: %u)\n", sizeof(reply_packet_header) + packet_length, reply_packet_header.caplen);
+
+    if (fsync(fd_w) < 0) {
+        perror("fsync");
+        exit(1);
+    }
+        
+    close(fd_w);
 }
 
-int read_packet(int fd, pcap_file_header file_header){
+int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
     pcap_pkthdr packet_header;
     char packet_data[65536];
     memset(&packet_data, 0, 65536);
@@ -163,7 +172,7 @@ int read_packet(int fd, pcap_file_header file_header){
     iov[0].iov_len = sizeof(packet_header);
     iov[1].iov_base = &packet_data;
     iov[1].iov_len = 65535;
-    ssize_t bytes_read = readv(fd, iov, 2);
+    ssize_t bytes_read = readv(fd_r, iov, 2);
     if (bytes_read == 0) {
         //printf("waiting for next packet...\n");
         //sleep(2);
@@ -197,7 +206,7 @@ int read_packet(int fd, pcap_file_header file_header){
             if (icmp->type == 8) {
                 if(debug)
                     printf("ICMP echo request received, sending reply...\n");
-                icmp_respond(packet_header,packet_data);
+                icmp_respond(fd_w,packet_header,packet_data);
             }
         }
     } else {
@@ -226,21 +235,25 @@ int main(int argc, char *argv[]) {
         //printf("Waiting for network %s to exist...\n",dot_dmp);
         //sleep(2);
     }
-
-    int fd = open(dot_dmp,O_RDONLY);
-    if (fd < 0) {
+    int fd_w = open(dot_dmp,O_APPEND);
+    if (fd_w < 0) {
+        perror("open");
+        exit(1);
+    }
+    int fd_r = open(dot_dmp,O_RDONLY);
+    if (fd_r < 0) {
         perror("open");
         exit(1);
     }
     struct pcap_file_header file_header;
-    read_pcap_header(fd, file_header);
+    read_pcap_header(fd_r, file_header);
     while(1){
-        int status = read_packet(fd, file_header);
+        int status = read_packet(fd_r, fd_w, file_header);
         if (status == -1) {
             printf("error reading packet: -1\n");
             break;
         }
     }
-    close(fd);
+    close(fd_r);
     return 0;
 }
