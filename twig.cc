@@ -48,7 +48,7 @@ int read_pcap_header(int fd_w, pcap_file_header file_header){
         return -1;
     }
 
-    if (file_header.magic == PCAP_MAGIC) {  // 0xa1b2c3d4
+    if (file_header.magic == swap32(PCAP_MAGIC)) {  // 0xa1b2c3d4
         file_is_big_endian = true;
         file_header.version_major = swap16(file_header.version_major);
         file_header.version_minor = swap16(file_header.version_minor);
@@ -56,7 +56,7 @@ int read_pcap_header(int fd_w, pcap_file_header file_header){
         file_header.sigfigs = swap32(file_header.sigfigs);
         file_header.snaplen = swap32(file_header.snaplen);
         file_header.linktype = swap32(file_header.linktype);
-    } else if (file_header.magic == swap32(PCAP_MAGIC)) {  // 0xd4c3b2a1
+    } else if (file_header.magic == PCAP_MAGIC) {  // 0xd4c3b2a1
         file_is_big_endian = false;
     } else {
         fprintf(stderr, "invalid magic number: 0x%08x\n", file_header.magic);
