@@ -66,13 +66,3 @@ struct arp_hdr {
 } __attribute__((packed));
 
 // ICMP
-
-struct icmp_hdr {
-	uint8_t type;
-	uint8_t code;
-	uint16_t checksum;
-	uint16_t id;
-	uint16_t sequence;
-} __attribute__((packed));
-
-

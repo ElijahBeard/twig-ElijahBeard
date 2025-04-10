@@ -5,6 +5,7 @@
 
 typedef int32_t bpf_int32;
 typedef u_int32_t bpf_u_int32;
+int debug = 0;
 
 uint16_t checksum(uint16_t* buf, int len) {
     uint32_t sum = 0;
