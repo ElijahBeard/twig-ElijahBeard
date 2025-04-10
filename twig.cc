@@ -48,22 +48,19 @@ int read_pcap_header(int fd_w, pcap_file_header file_header){
         return -1;
     }
 
-    if (file_header.magic == 0xd4c3b2a1) {
-        file_is_big_endian = false;
-    } else if (file_header.magic == 0xa1b2c3d4) {
+    if (file_header.magic == PCAP_MAGIC) {  // 0xa1b2c3d4
         file_is_big_endian = true;
-    } else {
-        fprintf(stderr, "invalid magic number: 0x%08x\n", file_header.magic);
-        exit(1);
-    }
-
-    if (file_is_big_endian) {
         file_header.version_major = swap16(file_header.version_major);
         file_header.version_minor = swap16(file_header.version_minor);
-        file_header.thiszone      = swap32(file_header.thiszone);
-        file_header.sigfigs       = swap32(file_header.sigfigs);
-        file_header.snaplen       = swap32(file_header.snaplen);
-        file_header.linktype      = swap32(file_header.linktype);
+        file_header.thiszone = swap32(file_header.thiszone);
+        file_header.sigfigs = swap32(file_header.sigfigs);
+        file_header.snaplen = swap32(file_header.snaplen);
+        file_header.linktype = swap32(file_header.linktype);
+    } else if (file_header.magic == swap32(PCAP_MAGIC)) {  // 0xd4c3b2a1
+        file_is_big_endian = false;
+    } else {
+        fprintf(stderr, "invalid magic number: 0x%08x\n", file_header.magic);
+        return -1;
     }
 
     printf("magic:0x%x\nvers:%u.%u\nzone:%u\nsigfigs:%u\nsnaplen:%u\nlinktype:%u\n",
@@ -75,49 +72,27 @@ int read_pcap_header(int fd_w, pcap_file_header file_header){
 }
 
 void icmp_respond(int fd_w, pcap_pkthdr &packet_header, char *packet_data){
-    
     char response_data[65536];
     size_t packet_length = packet_header.caplen;
-    if (packet_length > 65535) {
-        fprintf(stderr, "Packet too large: %zu bytes\n", packet_length);
-        return;
-    }
     memcpy(response_data, packet_data, packet_length);
-    if (debug)
-        printf("swg fault..\n");
 
-    if (debug)
-        printf("creating reply packet header..\n");
-        
+    // create structures
     pcap_pkthdr reply_packet_header;
     eth_hdr* eth_response = reinterpret_cast<eth_hdr*>(response_data);
     ipv4_hdr* ip_response = reinterpret_cast<ipv4_hdr*>(response_data + 14);
     uint8_t ip_header_len = (ip_response->version_ihl & 0b1111) * 4;
-    icmp_hdr* icmp_response = reinterpret_cast<icmp_hdr*>(reinterpret_cast<char*>(ip_response) + ip_header_len);
+    icmp_hdr* icmp_response = reinterpret_cast<icmp_hdr*>(
+    reinterpret_cast<char*>(ip_response) + ip_header_len);
     
-    // create packet header
-    if (debug)
-        printf("creating packet header..\n");
+    // build packet header
     struct timeval now;
     gettimeofday(&now,NULL);
-    reply_packet_header.caplen = packet_header.caplen;    // this has changed
-    reply_packet_header.len = packet_header.len;    // this has changed
+    reply_packet_header.caplen = packet_header.caplen;
+    reply_packet_header.len = packet_header.len;
     reply_packet_header.ts_secs = now.tv_sec;
     reply_packet_header.ts_usecs = now.tv_usec;
-
-    // endianess
-    if (file_is_big_endian) {
-        if (debug)
-            printf("swapping endianess..\n");
-        reply_packet_header.ts_secs  = swap32(reply_packet_header.ts_secs);
-        reply_packet_header.ts_usecs = swap32(reply_packet_header.ts_usecs);
-        reply_packet_header.caplen   = swap32(reply_packet_header.caplen);
-        reply_packet_header.len      = swap32(reply_packet_header.len);
-    }
-
+    
     // swap ethernet mac
-    if (debug)
-        printf("swapping ethernet..\n");
     eth_response->type = htons(0x0800);
     uint8_t tmp_mac[6];
     memcpy(tmp_mac, eth_response->dst, 6);
@@ -130,17 +105,26 @@ void icmp_respond(int fd_w, pcap_pkthdr &packet_header, char *packet_data){
     ip_response->src = tmp;
     ip_response->checksum = 0;
 
-    // make sure icmp packet is big endian
-
-    uint16_t check = checksum(reinterpret_cast<unsigned short*>(ip_response), ip_header_len);
-    ip_response->checksum = check;
-
+    // calculate ip checksum
+    {
+        uint16_t check = checksum(reinterpret_cast<const uint8_t *>(ip_response), ip_header_len);
+        ip_response->checksum = check;
+        printf("ip-checksum:%u",check);
+    }
+    
+    
     // modify icmp
     icmp_response->type = 0;
     icmp_response->code = 0;
     icmp_response->checksum = 0;
     size_t icmp_length = packet_length - 14 - ip_header_len;
-    icmp_response->checksum = checksum(reinterpret_cast<unsigned short*>(icmp_response), icmp_length);
+    {
+        uint16_t check = checksum(reinterpret_cast<const uint8_t *>(icmp_response), icmp_length);
+        icmp_response->checksum = check;
+        printf("icmp-checksum:%u",check);
+    }
+
+    // flip to big endian
 
     // write
     struct iovec iov[2];
@@ -183,7 +167,7 @@ void icmp_respond(int fd_w, pcap_pkthdr &packet_header, char *packet_data){
     }
 
     if (fsync(fd_w) == -1) {
-        perror("Error syncing file to disk");
+        perror("fsync");
         close(fd_w);
     }    
 }
@@ -201,7 +185,7 @@ int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
     ssize_t bytes_read = readv(fd_r, iov, 2);
     if (bytes_read == 0) {
         //printf("waiting for next packet...\n");
-        //sleep(2);
+        usleep(1000);
         return 0;
     } else if (bytes_read < 0) {
         perror("readv");
@@ -209,14 +193,19 @@ int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
     }
 
     if (file_is_big_endian) {
-        packet_header.ts_secs  = swap32(packet_header.ts_secs);
+        packet_header.ts_secs = swap32(packet_header.ts_secs);
         packet_header.ts_usecs = swap32(packet_header.ts_usecs);
-        packet_header.caplen   = swap32(packet_header.caplen);
-        packet_header.len      = swap32(packet_header.len);
+        packet_header.caplen = swap32(packet_header.caplen);
+        packet_header.len = swap32(packet_header.len);
     }
-    if (packet_header.caplen > 65535 || packet_header.caplen < sizeof(eth_hdr)) {
-        fprintf(stderr, "Invalid caplen: %u (max 65535, min %zu)\n", 
-                packet_header.caplen, sizeof(eth_hdr));
+
+    if (packet_header.caplen > 65535 || packet_header.caplen < 14) {
+        printf("Invalid caplen: %u\n", packet_header.caplen);
+        return 0;
+    }
+
+    if (packet_header.caplen < sizeof(eth_hdr)) {
+        std::cerr << "Packet too short for Ethernet\n";
         return 0;
     }
 
@@ -230,6 +219,7 @@ int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
             printf("Ethernet Type: 0x%04x IPV4\n", eth_type);
 
         ipv4_hdr *ip = (ipv4_hdr*)(packet_data + 14);
+        
         // ICMP ...
         if (ip->protocol == 1) {
             icmp_hdr* icmp = (icmp_hdr*)((char*)ip + (ip->version_ihl & 0b1111) * 4);
@@ -261,8 +251,6 @@ int main(int argc, char *argv[]) {
     if (strcmp(argv[1],"-d") == 0)  { debug = 1; dot_dmp = argv[2];}
     if (strcmp(argv[1], "-i") == 0) { mask = 1; dot_dmp = argv[2]; }
     if (strcmp(argv[1], "-h") == 0) { help = 1; dot_dmp = argv[2]; }
-
-    // find dmp
 
     struct stat buffer;
     while (stat(dot_dmp, &buffer) != 0) {
