@@ -28,7 +28,7 @@ void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
     eth_hdr* eth_response = reinterpret_cast<eth_hdr*>(response_data);
     ipv4_hdr* ip_response = reinterpret_cast<ipv4_hdr*>(response_data + 14);
     uint8_t ip_header_len = (ip_response->version_ihl & 0b1111) * 4;
-    udp_hdr* udp_response = reinterpret_cast<udp_hdr*>(packet_data + 14 + ip_header_len);
+    udp_hdr* udp_response = reinterpret_cast<udp_hdr*>(response_data + 14 + ip_header_len);
 
     // build packet header
     struct timeval now;
@@ -65,10 +65,11 @@ void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
 
     // swap / modify udp
     {
-        uint16_t tmp_port = ntohs(udp_response->dport);
-        udp_response->dport = udp_response->sport; // Already in network order
-        udp_response->sport = htons(tmp_port);     // Convert client port to network order
-        udp_response->len = htons(packet_length - 14 - ip_header_len); // UDP length (header + data)
+        uint16_t orig_sport = udp_response->sport; // Already in network order
+        uint16_t orig_dport = udp_response->dport; // Already in network order
+        udp_response->sport = orig_dport;          // Reply from dst port (e.g., 7)
+        udp_response->dport = orig_sport;          // To src port (e.g., 36022)
+        udp_response->len = htons(packet_length - 14 - ip_header_len);
         udp_response->checksum = 0;    
     }
 
