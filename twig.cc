@@ -16,6 +16,7 @@ int debug = 0;
 int mask = 0;
 int help = 0;
 char *dot_dmp;
+bool file_is_big_endian = false;
 
 void print_timestamp(uint32_t ts_secs, uint32_t ts_usecs) {
     time_t raw_time = static_cast<time_t>(ts_secs);
@@ -47,10 +48,9 @@ int read_pcap_header(int fd_w, pcap_file_header file_header){
         return -1;
     }
 
-    bool file_is_big_endian = false;
-    if (file_header.magic == PCAP_MAGIC) {
+    if (file_header.magic == 0xd4c3b2a1) {
         file_is_big_endian = false;
-    } else if (file_header.magic == swap32(PCAP_MAGIC)) {
+    } else if (file_header.magic == 0xa1b2c3d4) {
         file_is_big_endian = true;
     } else {
         fprintf(stderr, "invalid magic number: 0x%08x\n", file_header.magic);
@@ -58,7 +58,6 @@ int read_pcap_header(int fd_w, pcap_file_header file_header){
     }
 
     if (file_is_big_endian) {
-        file_header.magic         = swap32(file_header.magic);
         file_header.version_major = swap16(file_header.version_major);
         file_header.version_minor = swap16(file_header.version_minor);
         file_header.thiszone      = swap32(file_header.thiszone);
@@ -76,26 +75,49 @@ int read_pcap_header(int fd_w, pcap_file_header file_header){
 }
 
 void icmp_respond(int fd_w, pcap_pkthdr &packet_header, char *packet_data){
+    
     char response_data[65536];
     size_t packet_length = packet_header.caplen;
+    if (packet_length > 65535) {
+        fprintf(stderr, "Packet too large: %zu bytes\n", packet_length);
+        return;
+    }
     memcpy(response_data, packet_data, packet_length);
+    if (debug)
+        printf("swg fault..\n");
 
+    if (debug)
+        printf("creating reply packet header..\n");
+        
     pcap_pkthdr reply_packet_header;
     eth_hdr* eth_response = reinterpret_cast<eth_hdr*>(response_data);
     ipv4_hdr* ip_response = reinterpret_cast<ipv4_hdr*>(response_data + 14);
     uint8_t ip_header_len = (ip_response->version_ihl & 0b1111) * 4;
-    icmp_hdr* icmp_response = reinterpret_cast<icmp_hdr*>(
-    reinterpret_cast<char*>(ip_response) + ip_header_len);
+    icmp_hdr* icmp_response = reinterpret_cast<icmp_hdr*>(reinterpret_cast<char*>(ip_response) + ip_header_len);
     
     // create packet header
+    if (debug)
+        printf("creating packet header..\n");
     struct timeval now;
     gettimeofday(&now,NULL);
     reply_packet_header.caplen = packet_header.caplen;    // this has changed
     reply_packet_header.len = packet_header.len;    // this has changed
     reply_packet_header.ts_secs = now.tv_sec;
     reply_packet_header.ts_usecs = now.tv_usec;
-    
+
+    // endianess
+    if (file_is_big_endian) {
+        if (debug)
+            printf("swapping endianess..\n");
+        reply_packet_header.ts_secs  = swap32(reply_packet_header.ts_secs);
+        reply_packet_header.ts_usecs = swap32(reply_packet_header.ts_usecs);
+        reply_packet_header.caplen   = swap32(reply_packet_header.caplen);
+        reply_packet_header.len      = swap32(reply_packet_header.len);
+    }
+
     // swap ethernet mac
+    if (debug)
+        printf("swapping ethernet..\n");
     eth_response->type = htons(0x0800);
     uint8_t tmp_mac[6];
     memcpy(tmp_mac, eth_response->dst, 6);
@@ -107,7 +129,11 @@ void icmp_respond(int fd_w, pcap_pkthdr &packet_header, char *packet_data){
     ip_response->dest = ip_response->src;
     ip_response->src = tmp;
     ip_response->checksum = 0;
-    ip_response->checksum = checksum(reinterpret_cast<unsigned short*>(ip_response), ip_header_len);
+
+    // make sure icmp packet is big endian
+
+    uint16_t check = checksum(reinterpret_cast<unsigned short*>(ip_response), ip_header_len);
+    ip_response->checksum = check;
 
     // modify icmp
     icmp_response->type = 0;
@@ -146,6 +172,7 @@ void icmp_respond(int fd_w, pcap_pkthdr &packet_header, char *packet_data){
 
 
     // temp debug area:
+    if(debug){
         //printf("Sending reply to IP: %s\n", inet_ntoa(*(in_addr*)&ip_response->dest));
         printf("          MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
         eth_response->dst[0], eth_response->dst[1], eth_response->dst[2],
@@ -153,13 +180,12 @@ void icmp_respond(int fd_w, pcap_pkthdr &packet_header, char *packet_data){
         printf("Request caplen=%u len=%u\n", packet_header.caplen, packet_header.len);
         printf("Reply caplen=%u len=%u\n", reply_packet_header.caplen, reply_packet_header.len);
         printf("Will write back %zd total bytes (caplen: %u)\n", sizeof(reply_packet_header) + packet_length, reply_packet_header.caplen);
-
-    if (fsync(fd_w) < 0) {
-        perror("fsync");
-        exit(1);
     }
-        
-    close(fd_w);
+
+    if (fsync(fd_w) == -1) {
+        perror("Error syncing file to disk");
+        close(fd_w);
+    }    
 }
 
 int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
@@ -182,8 +208,15 @@ int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
         return -1;
     }
 
-    if (packet_header.caplen < sizeof(eth_hdr)) {
-        std::cerr << "Packet too short for Ethernet\n";
+    if (file_is_big_endian) {
+        packet_header.ts_secs  = swap32(packet_header.ts_secs);
+        packet_header.ts_usecs = swap32(packet_header.ts_usecs);
+        packet_header.caplen   = swap32(packet_header.caplen);
+        packet_header.len      = swap32(packet_header.len);
+    }
+    if (packet_header.caplen > 65535 || packet_header.caplen < sizeof(eth_hdr)) {
+        fprintf(stderr, "Invalid caplen: %u (max 65535, min %zu)\n", 
+                packet_header.caplen, sizeof(eth_hdr));
         return 0;
     }
 
@@ -197,7 +230,6 @@ int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
             printf("Ethernet Type: 0x%04x IPV4\n", eth_type);
 
         ipv4_hdr *ip = (ipv4_hdr*)(packet_data + 14);
-        
         // ICMP ...
         if (ip->protocol == 1) {
             icmp_hdr* icmp = (icmp_hdr*)((char*)ip + (ip->version_ihl & 0b1111) * 4);
@@ -230,12 +262,14 @@ int main(int argc, char *argv[]) {
     if (strcmp(argv[1], "-i") == 0) { mask = 1; dot_dmp = argv[2]; }
     if (strcmp(argv[1], "-h") == 0) { help = 1; dot_dmp = argv[2]; }
 
+    // find dmp
+
     struct stat buffer;
     while (stat(dot_dmp, &buffer) != 0) {
         //printf("Waiting for network %s to exist...\n",dot_dmp);
         //sleep(2);
     }
-    int fd_w = open(dot_dmp,O_APPEND);
+    int fd_w = open(dot_dmp, O_WRONLY | O_APPEND);
     if (fd_w < 0) {
         perror("open");
         exit(1);
@@ -255,5 +289,6 @@ int main(int argc, char *argv[]) {
         }
     }
     close(fd_r);
+    close(fd_w);
     return 0;
 }
