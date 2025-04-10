@@ -11,28 +11,11 @@
 #include "pheaders.h"
 #include "utils.h"
 #include "icmp.h"
+#include "udp.h"
 
 int mask = 0;
 int help = 0;
 char *dot_dmp;
-bool file_is_big_endian = false;
-
-void print_timestamp(uint32_t ts_secs, uint32_t ts_usecs) {
-    time_t raw_time = static_cast<time_t>(ts_secs);
-    struct tm* t = localtime(&raw_time);
-    if (t == nullptr) {
-        printf("Invalid time\n");
-        return;
-    }
-    printf("%04d-%02d-%02d %02d:%02d:%02d.%06u\n",
-            t->tm_year + 1900,
-            t->tm_mon + 1,
-            t->tm_mday,
-            t->tm_hour,
-            t->tm_min,
-            t->tm_sec,
-            ts_usecs);
-}
 
 int read_pcap_header(int fd_w, pcap_file_header file_header){
     struct iovec iov[1];
@@ -115,19 +98,26 @@ int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
     if (eth_type == 0x0800) {
         if(debug)
             printf("Ethernet Type: 0x%04x IPV4\n", eth_type);
-
-        ipv4_hdr *ip = (ipv4_hdr*)(packet_data + 14);
-        
-        // ICMP ...
+        if (debug) printf("Ethernet Type: 0x%04x IPv4\n", eth_type);
+        ipv4_hdr* ip = reinterpret_cast<ipv4_hdr*>(packet_data + 14);
+        uint8_t ip_header_len = (ip->version_ihl & 0b1111) * 4;        
+        // ICMP
         if (ip->protocol == 1) {
-            icmp_hdr* icmp = (icmp_hdr*)((char*)ip + (ip->version_ihl & 0b1111) * 4);
+            icmp_hdr* icmp = reinterpret_cast<icmp_hdr*>((char*)ip + ip_header_len);
             if(debug)
                 printf("ICMP type: %d code: %d\n", icmp->type, icmp->code);
             if (icmp->type == 8) {
                 if(debug)
                     printf("ICMP echo request received, sending reply...\n");
-                icmp_respond(fd_w,packet_header,packet_data);
+                icmp_respond(fd_w,packet_header,packet_data); // icmp.h
             }
+        }
+        // UDP
+        else if (ip->protocol == 17) {
+            udp_hdr* udp = reinterpret_cast<udp_hdr*>(packet_data + 14 + ip_header_len);
+            if(debug)
+                printf("UDP len: %d\n", udp->len);
+            udp_respond(fd_w,packet_header,packet_data); // udp.h
         }
     } else {
         if(debug)

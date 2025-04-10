@@ -46,13 +46,6 @@ struct ipv4_hdr {
     uint32_t dest;
 } __attribute__((packed));
 
-struct udp_hdr {
-    uint16_t sport;
-    uint16_t dport;
-    uint16_t len;
-    uint16_t checksum;
-} __attribute__ ((packed));
-
 struct arp_hdr {
 	uint16_t hardware_type;
 	uint16_t protocol_type;
@@ -64,5 +57,3 @@ struct arp_hdr {
     uint8_t target_mac[6];
     uint32_t target_ip;
 } __attribute__((packed));
-
-// ICMP
