@@ -58,7 +58,7 @@ void icmp_respond(int fd_w, pcap_pkthdr &packet_header, char *packet_data){
         uint16_t check = checksum(reinterpret_cast<uint16_t *>(ip_response), ip_header_len);
         ip_response->checksum = check;
         // is checksum == ffff
-        printf("ip-checksum:%u",check);
+        //printf("ip-checksum:%u",check);
     }
     
     // modify icmp

@@ -66,7 +66,7 @@ int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
     ssize_t bytes_read = readv(fd_r, iov, 2);
     if (bytes_read == 0) {
         //printf("waiting for next packet...\n");
-        usleep(1000);
+        usleep(10000);
         return 0;
     } else if (bytes_read < 0) {
         perror("readv");
