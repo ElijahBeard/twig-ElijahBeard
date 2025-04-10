@@ -107,7 +107,7 @@ void icmp_respond(int fd_w, pcap_pkthdr &packet_header, char *packet_data){
 
     // calculate ip checksum
     {
-        uint16_t check = checksum(reinterpret_cast<const uint8_t *>(ip_response), ip_header_len);
+        uint16_t check = checksum(reinterpret_cast<uint16_t *>(ip_response), ip_header_len);
         ip_response->checksum = check;
         // is checksum == ffff
         printf("ip-checksum:%u",check);
@@ -120,7 +120,7 @@ void icmp_respond(int fd_w, pcap_pkthdr &packet_header, char *packet_data){
     icmp_response->checksum = 0;
     size_t icmp_length = packet_length - 14 - ip_header_len;
     {
-        uint16_t check = checksum(reinterpret_cast<const uint8_t *>(icmp_response), icmp_length);
+        uint16_t check = checksum(reinterpret_cast<uint16_t *>(icmp_response), icmp_length);
         icmp_response->checksum = check;
         printf("icmp-checksum:%u",check);
     }
