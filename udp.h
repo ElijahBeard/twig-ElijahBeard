@@ -65,9 +65,9 @@ void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
 
     // swap / modify udp
     {
-        uint16_t tmp_port = udp_response->dport;
-        udp_response->dport = udp_response->sport;
-        udp_response->sport = tmp_port;
+        uint16_t tmp_port = ntohs(udp_response->dport);
+        udp_response->dport = udp_response->sport; // Already in network order
+        udp_response->sport = htons(tmp_port);     // Convert client port to network order
         udp_response->len = htons(packet_length - 14 - ip_header_len); // UDP length (header + data)
         udp_response->checksum = 0;    
     }
