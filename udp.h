@@ -28,7 +28,7 @@ void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
     eth_hdr* eth_response = reinterpret_cast<eth_hdr*>(response_data);
     ipv4_hdr* ip_response = reinterpret_cast<ipv4_hdr*>(response_data + 14);
     uint8_t ip_header_len = (ip_response->version_ihl & 0b1111) * 4;
-    udp_hdr* udp = reinterpret_cast<udp_hdr*>(packet_data + 14 + ip_header_len);
+    udp_hdr* udp_response = reinterpret_cast<udp_hdr*>(packet_data + 14 + ip_header_len);
 
     // build packet header
     struct timeval now;
@@ -59,16 +59,17 @@ void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
     {
         uint16_t check = checksum(reinterpret_cast<uint16_t *>(ip_response), ip_header_len);
         ip_response->checksum = check;
-        // is checksum == ffff
+        // is checksum == ffff?
         printf("ip-checksum:%u",check);
     }
 
     // swap / modify udp
     {
-        uint32_t tmp = udp->dport;
-        udp->dport = udp->sport;
-        udp->sport = tmp;
-        udp->checksum = 0;
+        uint16_t tmp_port = udp_response->dport;
+        udp_response->dport = udp_response->sport;
+        udp_response->sport = tmp_port;
+        udp_response->len = htons(packet_length - 14 - ip_header_len); // UDP length (header + data)
+        udp_response->checksum = 0;    
     }
 
     // udp checksum
