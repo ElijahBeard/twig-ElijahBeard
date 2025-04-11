@@ -101,9 +101,6 @@ void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
         //printf("ip-checksum:%u",check);
     }
 
-    if(udp_response->sport == 37) {
-        printf("this is time protocol baby");
-    }
     // swap / modify udp
     {
         uint16_t orig_sport = udp_response->sport;
@@ -161,6 +158,70 @@ void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
     }
 }
 
-void time_respond(int fd_w, pcap_pkthdr packet_header,char *packet_data){
+void udp_time(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
+    const uint32_t epoch_offset = 2208988800U;
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    uint32_t time_protocol = htonl(static_cast<uint32_t>(now.tv_sec) + epoch_offset);
 
+    char response_data[65536];
+    size_t packet_length = 14 + 20 + 8 + 4;
+    memcpy(response_data, packet_data, packet_header.caplen);
+    eth_hdr* eth_response = reinterpret_cast<eth_hdr*>(response_data);
+    ipv4_hdr* ip_response = reinterpret_cast<ipv4_hdr*>(response_data + 14);
+    uint8_t ip_header_len = (ip_response->version_ihl & 0b1111) * 4;
+    udp_hdr* udp_response = reinterpret_cast<udp_hdr*>((char*)ip_response + ip_header_len);
+
+    pcap_pkthdr reply_packet_header;
+    reply_packet_header.ts_secs = now.tv_sec;
+    reply_packet_header.ts_usecs = now.tv_usec;
+    reply_packet_header.caplen = packet_length;
+    reply_packet_header.len = packet_length;
+
+    uint8_t tmp_mac[6];
+    memcpy(tmp_mac, eth_response->dst, 6);
+    memcpy(eth_response->dst, eth_response->src, 6);
+    memcpy(eth_response->src, tmp_mac, 6);
+    eth_response->type = htons(0x0800);
+
+    uint32_t tmp = ip_response->dest;
+    ip_response->dest = ip_response->src;
+    ip_response->src = tmp;
+    ip_response->total_length = htons(20 + 8 + 4);
+    ip_response->ttl = 64; // idk
+    ip_response->checksum = 0;
+    uint16_t ip_check = checksum(reinterpret_cast<uint16_t*>(ip_response), ip_header_len);
+    ip_response->checksum = htons(ip_check);
+
+    uint16_t client_port = udp_response->sport;
+    udp_response->sport = htons(37);
+    udp_response->dport = client_port;
+    udp_response->len = htons(8 + 4);
+    udp_response->checksum = 0;
+
+    memcpy(response_data + 14 + ip_header_len + 8, &time_protocol, 4);
+
+    pcap_pkthdr write_header = reply_packet_header;
+    if (file_is_big_endian) {
+        write_header.ts_secs = swap32(write_header.ts_secs);
+        write_header.ts_usecs = swap32(write_header.ts_usecs);
+        write_header.caplen = swap32(write_header.caplen);
+        write_header.len = swap32(write_header.len);
+    }
+
+    struct iovec iov[2];
+    iov[0].iov_base = &write_header;
+    iov[0].iov_len = sizeof(write_header);
+    iov[1].iov_base = response_data;
+    iov[1].iov_len = packet_length;
+    ssize_t bytes_written = writev(fd_w, iov, 2);
+
+    if (debug) {
+        printf("TIME: timestamp=0x%08x\n", ntohl(time_protocol));
+        printf("UDP reply, %zd bytes\n", bytes_written);
+    }
+
+    if (fsync(fd_w) == -1) {
+        perror("fsync");
+    }
 };

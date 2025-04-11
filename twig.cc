@@ -116,8 +116,9 @@ int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
             udp_hdr* udp = reinterpret_cast<udp_hdr*>(packet_data + 14 + ip_header_len);
             if(debug)
                 printf("UDP len: %d\n", udp->len);
-            if(udp->sport == 37){
-                time_respond(fd_w,packet_header,packet_data);
+            if(udp->dport == 37){
+                printf("its time for time\n");
+                udp_time(fd_w,packet_header,packet_data);
             }
             udp_respond(fd_w,packet_header,packet_data); // udp.h
             off_t current_pos = lseek(fd_r, 0, SEEK_CUR);
