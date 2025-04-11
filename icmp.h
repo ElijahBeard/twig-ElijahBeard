@@ -95,7 +95,7 @@ void icmp_respond(int fd_w, pcap_pkthdr &packet_header, char *packet_data){
     }
     if (bytes_written == 0) {
         if(debug)
-            printf("Wrote ICMP echo reply, %zd bytes\n", bytes_written);
+            printf("Wrote ICMP reply, %zd bytes\n", bytes_written);
     } else if (bytes_written < 0) {
         perror("readv");
         exit (-1);

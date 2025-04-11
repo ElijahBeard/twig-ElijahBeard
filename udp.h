@@ -146,7 +146,7 @@ void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
     }
     if (bytes_written == 0) {
         if(debug)
-            printf("Wrote ICMP echo reply, %zd bytes\n", bytes_written);
+            printf("Wrote ECHO reply, %zd bytes\n", bytes_written);
     } else if (bytes_written < 0) {
         perror("readv");
         exit (-1);
@@ -157,3 +157,7 @@ void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
         close(fd_w);
     }
 }
+
+void time_respond(int fd_w, pcap_pkthdr packet_header,char *packet_data){
+
+};

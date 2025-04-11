@@ -1,6 +1,6 @@
 CXX=g++
 CC=g++
-CPPFLAGS=-Wall -g -O2
+CPPFLAGS=-Wall -std=c++11 -g -O2
 
 TARGET=twig
 SRCS=${wildcard *.cc}

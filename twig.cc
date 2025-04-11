@@ -13,9 +13,8 @@
 #include "icmp.h"
 #include "udp.h"
 
-int mask = 0;
-int help = 0;
 char *dot_dmp;
+int THE_SILAS_SWITCH = 0;
 
 int read_pcap_header(int fd_w, pcap_file_header file_header){
     struct iovec iov[1];
@@ -90,7 +89,7 @@ int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
         return 0;
     }
 
-    print_timestamp(packet_header.ts_secs,packet_header.ts_usecs);
+    //print_timestamp(packet_header.ts_secs,packet_header.ts_usecs);
 
     eth_hdr* eth = (eth_hdr*)packet_data;
     uint16_t eth_type = ntohs(eth->type);
@@ -117,7 +116,9 @@ int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
             udp_hdr* udp = reinterpret_cast<udp_hdr*>(packet_data + 14 + ip_header_len);
             if(debug)
                 printf("UDP len: %d\n", udp->len);
-                
+            if(udp->sport == 37){
+                time_respond(fd_w,packet_header,packet_data);
+            }
             udp_respond(fd_w,packet_header,packet_data); // udp.h
             off_t current_pos = lseek(fd_r, 0, SEEK_CUR);
             if (current_pos != -1) {
@@ -136,20 +137,44 @@ int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        printf("Usage%s <packet_file.dmp>\n",argv[0]);
-        return 1; 
+    int argc_index = 1;
+    // CLI Parsing
+    if ((strcmp(argv[1], "-h") == 0)||(strcmp(argv[1], "--help") == 0)) {
+        printf("Usage: %s [-d] [-i <ip address> <mask>] [<pfile.dmp>]\n",argv[0]);
+        return 0;
     }
-    if (argc == 2) { dot_dmp = argv[1]; }
-    if (strcmp(argv[1],"-d") == 0)  { debug = 1; dot_dmp = argv[2];}
-    if (strcmp(argv[1], "-i") == 0) { mask = 1; dot_dmp = argv[2]; }
-    if (strcmp(argv[1], "-h") == 0) { help = 1; dot_dmp = argv[2]; }
-
+    if (argc < 2) {
+        printf("Usage: %s [-d] [-i <ip address> <mask>] [<pfile.dmp>]\n",argv[0]);
+        return 1;
+    }
+    if (strcmp(argv[1],"-d") == 0)  {
+        argc_index++; debug = 1; dot_dmp = argv[2];
+    }
+    if (strcmp(argv[argc_index], "-i") == 0) {
+        const char* ip_str = argv[argc_index + 1];
+        const char* mask_str = argv[argc_index + 2];
+        // construct the file name from given ip and mask
+        char* file_paths[2];
+        construct_path(ip_str,mask_str,file_paths);
+        printf("%s\n",file_paths[0]);
+        printf("%s\n",file_paths[1]);
+        if(THE_SILAS_SWITCH){
+            // looks for file in .
+            dot_dmp = file_paths[0];
+        } else {
+            // looks for file in ../Twig_tools/
+            dot_dmp = file_paths[1];
+        }
+    } else {
+        dot_dmp = argv[1];
+    }
     struct stat buffer;
     while (stat(dot_dmp, &buffer) != 0) {
-        //printf("Waiting for network %s to exist...\n",dot_dmp);
-        //sleep(2);
+        printf("Waiting for network %s to exist...\n",dot_dmp);
+        sleep(2);
     }
+
+    // File Descriptor Stuff
     int fd_w = open(dot_dmp, O_WRONLY | O_APPEND);
     if (fd_w < 0) {
         perror("open");
@@ -160,6 +185,8 @@ int main(int argc, char *argv[]) {
         perror("open");
         exit(1);
     }
+
+    // Meat and Potatoes
     struct pcap_file_header file_header;
     read_pcap_header(fd_r, file_header);
     while(1){
