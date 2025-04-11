@@ -118,9 +118,10 @@ int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
                 printf("UDP len: %d\n", udp->len);
             if(udp->dport == 37){
                 printf("its time for time\n");
-                udp_time(fd_w,packet_header,packet_data);
+                udp_time(fd_w,packet_header,packet_data); // udp.h
+            } else {
+                udp_respond(fd_w,packet_header,packet_data); // udp.h
             }
-            udp_respond(fd_w,packet_header,packet_data); // udp.h
             off_t current_pos = lseek(fd_r, 0, SEEK_CUR);
             if (current_pos != -1) {
                 lseek(fd_r, current_pos, SEEK_SET); // Stay at current position
