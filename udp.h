@@ -18,6 +18,35 @@ struct udp_hdr {
     uint16_t checksum;
 };
 
+struct udp_pseudo {
+    uint32_t src;
+    uint32_t dst;
+    uint8_t zeros;
+    uint8_t protocol;
+    uint16_t udp_len;
+};
+
+uint16_t udp_checksum(pcap_pkthdr packet_header, ipv4_hdr *ip_response, udp_hdr *udp_response) {
+    udp_pseudo p_udp;
+    p_udp.src = ip_response->src;
+    p_udp.dst = ip_response->dest;
+    p_udp.zeros = 0;
+    p_udp.protocol = 17;
+    p_udp.udp_len = udp_response->len;
+
+    size_t packet_length = packet_header.caplen;
+    uint8_t ip_header_len = (ip_response->version_ihl & 0b1111) * 4;
+    size_t udp_data_len = packet_length - 14 - ip_header_len - sizeof(udp_hdr);
+    size_t total_len = sizeof(p_udp) + sizeof(udp_hdr) + udp_data_len;
+    uint8_t* checksum_buf = new uint8_t[total_len];
+    memcpy(checksum_buf, &p_udp, sizeof(p_udp));
+    memcpy(checksum_buf + sizeof(p_udp), udp_response, sizeof(udp_hdr) + udp_data_len);
+
+    uint16_t udp_check = checksum(reinterpret_cast<uint16_t*>(checksum_buf), total_len);    return udp_check;
+    return udp_check;
+    delete[] checksum_buf;
+}
+
 void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
     char response_data[65536];
     size_t packet_length = packet_header.caplen;
@@ -37,7 +66,7 @@ void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
     reply_packet_header.len = packet_header.len;
     reply_packet_header.ts_secs = now.tv_sec;
     reply_packet_header.ts_usecs = now.tv_usec;
-    
+
     // check if double value
     static int last_seq = -1;
     int seq = ntohs(*((uint16_t*)(response_data + 14 + ip_header_len + sizeof(udp_hdr))));
@@ -74,15 +103,17 @@ void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
 
     // swap / modify udp
     {
-        uint16_t orig_sport = udp_response->sport; // Already in network order
-        uint16_t orig_dport = udp_response->dport; // Already in network order
-        udp_response->sport = orig_dport;          // Reply from dst port (e.g., 7)
-        udp_response->dport = orig_sport;          // To src port (e.g., 36022)
+        uint16_t orig_sport = udp_response->sport;
+        uint16_t orig_dport = udp_response->dport;
+        udp_response->sport = orig_dport;
+        udp_response->dport = orig_sport;
         udp_response->len = htons(packet_length - 14 - ip_header_len);
-        udp_response->checksum = 0;    
+        udp_response->checksum = 0;
     }
 
     // udp checksum
+    uint16_t udp_check = udp_checksum(packet_header,ip_response,udp_response);
+    udp_response->checksum = udp_check;
 
     // swap endianess
     pcap_pkthdr write_header = reply_packet_header;
