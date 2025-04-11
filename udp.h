@@ -37,6 +37,15 @@ void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
     reply_packet_header.len = packet_header.len;
     reply_packet_header.ts_secs = now.tv_sec;
     reply_packet_header.ts_usecs = now.tv_usec;
+    
+    // check if double value
+    static int last_seq = -1;
+    int seq = ntohs(*((uint16_t*)(response_data + 14 + ip_header_len + sizeof(udp_hdr))));
+    if (seq == last_seq) {
+        if (debug) printf("Duplicate seq %d, skipping\n", seq);
+        return;
+    }
+    last_seq = seq;
 
     // swap ethernet mac
     {
