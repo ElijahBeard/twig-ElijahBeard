@@ -101,6 +101,9 @@ void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
         //printf("ip-checksum:%u",check);
     }
 
+    if(udp_response->sport == 37) {
+        printf("this is time protocol baby");
+    }
     // swap / modify udp
     {
         uint16_t orig_sport = udp_response->sport;
