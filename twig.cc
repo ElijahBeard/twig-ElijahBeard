@@ -12,6 +12,7 @@
 #include "utils.h"
 #include "icmp.h"
 #include "udp.h"
+#include "arp.h"
 
 char *dot_dmp;
 int THE_SILAS_SWITCH = 0;
@@ -123,6 +124,9 @@ int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
             // }
             udp_respond(fd_w,packet_header,packet_data); // udp.h
         }
+    } else if (eth_type == 0x0806){
+        arp_hdr* arp = reinterpret_cast<arp_hdr*>(packet_data + 14);
+        cache_arp(arp);
     } else {
         if(debug)
             printf("detected NOTHING IM USELESS\n");
