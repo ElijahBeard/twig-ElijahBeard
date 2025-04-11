@@ -43,8 +43,8 @@ uint16_t udp_checksum(pcap_pkthdr packet_header, ipv4_hdr *ip_response, udp_hdr 
     memcpy(checksum_buf + sizeof(p_udp), udp_response, sizeof(udp_hdr) + udp_data_len);
 
     uint16_t udp_check = checksum(reinterpret_cast<uint16_t*>(checksum_buf), total_len);    return udp_check;
-    return udp_check;
     delete[] checksum_buf;
+    return udp_check;
 }
 
 void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
