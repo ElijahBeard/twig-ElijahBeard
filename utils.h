@@ -8,30 +8,17 @@ typedef u_int32_t bpf_u_int32;
 int debug = 0;
 bool file_is_big_endian = false;
 
-uint16_t checksum(const uint8_t* data, size_t len) {
+uint16_t checksum(uint16_t* buf, int len) {
     uint32_t sum = 0;
-    size_t i = 0;
-
-    // Process 16-bit words (2 bytes at a time)
-    while (i + 1 < len) {
-        uint16_t word = (data[i] << 8) | data[i + 1]; // Big-endian order
-        sum += word;
-        i += 2;
-    }
-
-    // Handle odd byte if len is not even
-    if (i < len) {
-        sum += (data[i] << 8); // Pad with 0
-    }
-
-    // Fold 32-bit sum to 16 bits
-    while (sum >> 16) {
-        sum = (sum & 0xFFFF) + (sum >> 16);
-    }
-
-    // One’s complement
+    for (; len > 1; len -= 2)
+        sum += *buf++;
+    if (len == 1)
+        sum += *(uint8_t*)buf;
+    sum = (sum >> 16) + (sum & 0xFFFF);
+    sum += (sum >> 16);
     return ~sum;
 }
+
 uint16_t swap16(uint16_t val) {
     return (val >> 8) | (val << 8);
 }
