@@ -17,7 +17,7 @@ struct icmp_hdr {
 	uint16_t checksum;
 	uint16_t id;
 	uint16_t sequence;
-} __attribute__((packed));
+};
 
 void icmp_respond(int fd_w, pcap_pkthdr &packet_header, char *packet_data){
     char response_data[65536];
@@ -29,9 +29,8 @@ void icmp_respond(int fd_w, pcap_pkthdr &packet_header, char *packet_data){
     eth_hdr* eth_response = reinterpret_cast<eth_hdr*>(response_data);
     ipv4_hdr* ip_response = reinterpret_cast<ipv4_hdr*>(response_data + 14);
     uint8_t ip_header_len = (ip_response->version_ihl & 0b1111) * 4;
-    icmp_hdr* icmp_response = reinterpret_cast<icmp_hdr*>(
-    reinterpret_cast<char*>(ip_response) + ip_header_len);
-    
+    icmp_hdr* icmp_response = reinterpret_cast<icmp_hdr*>(response_data + 14 + ip_header_len);
+        
     // build packet header
     struct timeval now;
     gettimeofday(&now,NULL);

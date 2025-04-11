@@ -31,7 +31,7 @@ struct eth_hdr {
 	uint8_t dst[6];
 	uint8_t src[6];
 	uint16_t type;
-} __attribute__((packed));
+};
 
 struct ipv4_hdr {
     uint8_t version_ihl;
@@ -44,7 +44,7 @@ struct ipv4_hdr {
     uint16_t checksum;
     uint32_t src;
     uint32_t dest;
-} __attribute__((packed));
+};
 
 struct arp_hdr {
 	uint16_t hardware_type;
@@ -56,4 +56,4 @@ struct arp_hdr {
     uint32_t sender_ip;
     uint8_t target_mac[6];
     uint32_t target_ip;
-} __attribute__((packed));
+};

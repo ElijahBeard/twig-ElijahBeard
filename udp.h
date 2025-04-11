@@ -16,7 +16,7 @@ struct udp_hdr {
     uint16_t dport;
     uint16_t len;
     uint16_t checksum;
-} __attribute__ ((packed));
+};
 
 void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
     char response_data[65536];
