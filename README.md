@@ -16,4 +16,4 @@ In case your dmp files populate in `./` go to twig.cc and make THE_SILAS_SWITCH 
     - [✅] ICMP
     - [✅] UDP Demux
     - [🩹] UDP Checksum (EXTRA CREDIT)
-    - [ ] ARP Cache
+    - [🩹] ARP Cache
