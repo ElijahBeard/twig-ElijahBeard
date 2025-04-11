@@ -139,13 +139,13 @@ int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
 int main(int argc, char *argv[]) {
     int argc_index = 1;
     // CLI Parsing
-    if ((strcmp(argv[1], "-h") == 0)||(strcmp(argv[1], "--help") == 0)) {
-        printf("Usage: %s [-d] [-i <ip address> <mask>] [<pfile.dmp>]\n",argv[0]);
-        return 0;
-    }
     if (argc < 2) {
         printf("Usage: %s [-d] [-i <ip address> <mask>] [<pfile.dmp>]\n",argv[0]);
         return 1;
+    }
+    if ((strcmp(argv[1], "-h") == 0)||(strcmp(argv[1], "--help") == 0)) {
+        printf("Usage: %s [-d] [-i <ip address> <mask>] [<pfile.dmp>]\n",argv[0]);
+        return 0;
     }
     if (strcmp(argv[1],"-d") == 0)  {
         argc_index++; debug = 1; dot_dmp = argv[2];
