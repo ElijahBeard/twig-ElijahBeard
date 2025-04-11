@@ -57,7 +57,7 @@ void udp_respond(int fd_w, pcap_pkthdr &packet_header, char* packet_data){
 
     // calculate ip checksum
     {
-        uint16_t check = checksum(reinterpret_cast<uint16_t *>(ip_response), ip_header_len);
+        uint16_t check = checksum(reinterpret_cast<uint8_t *>(ip_response), ip_header_len);
         ip_response->checksum = check;
         // is checksum == ffff?
         //printf("ip-checksum:%u",check);
