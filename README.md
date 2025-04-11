@@ -1,6 +1,6 @@
 # SILAS,
 My twig looks for dmp files in `../Twig_tools/` since thats what my directory looks like. 
-In case your dmp files populate in `./` go to twig.cc and make SILAS_SWITCH 1
+In case your dmp files populate in `./` go to twig.cc and make THE_SILAS_SWITCH = 1
 
 # twig-ElijahBeard TODO
 - 🩹  **Add CLI parsing →**
