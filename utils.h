@@ -80,3 +80,27 @@ void print_timestamp(uint32_t ts_secs, uint32_t ts_usecs) {
             t->tm_sec,
             ts_usecs);
 }
+
+uint32_t str_to_ip(const char* str) {
+    struct in_addr addr;
+    if (inet_pton(AF_INET, str, &addr) != 1) {
+        fprintf(stderr, "Invalid IP address: %s\n", str);
+        exit(1);
+    }
+    return addr.s_addr; // Network byte order
+}
+
+std::string ip_to_str(uint32_t ip) {
+    char buf[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &ip, buf, INET_ADDRSTRLEN);
+    return std::string(buf);
+}
+
+uint32_t calc_network(uint32_t ip, uint32_t mask_length) {
+    uint32_t mask = htonl(0xffffffff << (32 - mask_length)) & 0xffffffff;
+    return ip & mask;
+}
+
+uint64_t ip_to_mac(uint32_t ip) {
+    return (0x5efeULL << 32) | (ntohl(ip) & 0xffffffff);
+}

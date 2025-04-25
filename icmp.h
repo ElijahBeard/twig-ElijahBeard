@@ -10,8 +10,8 @@
 
 #include "pheaders.h"
 #include "utils.h"
-#include "shrub.h"
 
+#include "shrub.h" // for globals
 
 void icmp_respond(int fd_w, pcap_pkthdr &packet_header, char *packet_data){
     char response_data[65536];

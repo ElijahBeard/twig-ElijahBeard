@@ -2,7 +2,7 @@ CXX=g++
 CC=g++
 CPPFLAGS=-Wall -std=c++11 -g -O2
 
-TARGET=twig
+TARGET=shrub
 SRCS=${wildcard *.cc}
 OBJECTS=${SRCS:.cc=.o}
 HEADERS=${wildcard *.h}

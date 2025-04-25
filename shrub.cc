@@ -5,11 +5,11 @@
 
 int main(int argc, char* argv[]) {
     std::vector<std::string> interfaces_ = parse_interfaces(argc,argv);
-    // num_interfaces = interfaces_.size();
-    // for (int i = 0; i < num_interfaces; i++) {
-    //     setup(interfaces_[i].c_str, i);
-    // }
-
+    num_interfaces = interfaces_.size();
+    for (int i = 0; i < num_interfaces; i++) {
+        setup_interface(interfaces_[i].c_str(), i);
+    }
+    
     // init_routing_table();
 
     // time_t last_rip = 0;

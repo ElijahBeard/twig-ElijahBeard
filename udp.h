@@ -10,7 +10,8 @@
 
 #include "pheaders.h"
 #include "utils.h"
-#include "shrub.h"
+
+#include "shrub.h" // for globals
 
 uint16_t udp_checksum(pcap_pkthdr packet_header, ipv4_hdr *ip_response, udp_hdr *udp_response) {
     udp_pseudo p_udp;

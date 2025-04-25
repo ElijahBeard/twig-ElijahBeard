@@ -9,11 +9,12 @@
 #include <sys/time.h>
 
 #include "pheaders.h"
-#include "shrub.h"
 #include "utils.h"
 #include "icmp.h"
 #include "udp.h"
 #include "arp.h"
+
+#include "shrub.h" // for globals
 
 char *dot_dmp;
 
@@ -126,7 +127,7 @@ int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
         }
     } else if (eth_type == 0x0806){
         arp_hdr* arp = reinterpret_cast<arp_hdr*>(packet_data + 14);
-        cache_arp(arp);
+        //cache_arp(arp);
     } else {
         if(debug)
             printf("detected NOTHING IM USELESS\n");
