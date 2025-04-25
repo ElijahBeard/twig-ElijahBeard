@@ -132,3 +132,48 @@ void setup_interface(const char* interface_, int interface_idx) {
         .fd_w = fd_w
     };
 }
+
+void print_routing_table() {
+    if (!debug) return;
+    printf("Routing Table:\n");
+    for (const auto& entry : routing_table) {
+        printf("Dest: %s/%d, Next Hop: %s, Metric: %d, Iface: %d\n",
+               ip_to_str(entry.dest_ip).c_str(),
+               __builtin_popcount(entry.mask),
+               entry.next_hop ? ip_to_str(entry.next_hop).c_str() : "Direct",
+               entry.metric, entry.interface_idx);
+    }
+    printf("\n");
+}
+
+void init_routing_table() {
+    for (int i = 0; i < num_interfaces; i++) {
+        uint32_t mask = (0xffffffff << (32 - interfaces[i].mask_length)) & 0xffffffff;
+        uint32_t network = calc_network(interfaces[i].ipv4_addr, mask);
+        routing_table.push_back({network, mask, 0, 0, i});
+    }
+
+    print_routing_table();
+
+    if (!default_route.empty()) {
+        if (num_interfaces == 1) {
+            fprintf(stderr, "--default-route only for routers\n");
+            exit(1);
+        }
+        uint32_t next_hop = str_to_ip(default_route.c_str());
+        int iface_idx = -1;
+        for (int i = 0; i < num_interfaces; i++) {
+            uint32_t mask = (0xffffffff << (32 - interfaces[i].mask_length)) & 0xffffffff;
+            if ((next_hop & mask) == (interfaces[i].ipv4_addr & mask)) {
+                iface_idx = i;
+                break;
+            }
+        }
+        if (iface_idx == -1) {
+            fprintf(stderr, "Default route next hop not on any network\n");
+            exit(1);
+        }
+        routing_table.push_back({0, 0, next_hop, 1, iface_idx});
+        print_routing_table();
+    }
+}

@@ -9,8 +9,8 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < num_interfaces; i++) {
         setup_interface(interfaces_[i].c_str(), i);
     }
-    
-    // init_routing_table();
+
+    init_routing_table();
 
     // time_t last_rip = 0;
     // while(1) {
