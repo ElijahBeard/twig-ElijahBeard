@@ -10,21 +10,7 @@
 
 #include "pheaders.h"
 #include "utils.h"
-
-struct udp_hdr {
-    uint16_t sport;
-    uint16_t dport;
-    uint16_t len;
-    uint16_t checksum;
-};
-
-struct udp_pseudo {
-    uint32_t src;
-    uint32_t dst;
-    uint8_t zeros;
-    uint8_t protocol;
-    uint16_t udp_len;
-};
+#include "shrub.h"
 
 uint16_t udp_checksum(pcap_pkthdr packet_header, ipv4_hdr *ip_response, udp_hdr *udp_response) {
     udp_pseudo p_udp;

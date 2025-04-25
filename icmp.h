@@ -10,14 +10,8 @@
 
 #include "pheaders.h"
 #include "utils.h"
+#include "shrub.h"
 
-struct icmp_hdr {
-	uint8_t type;
-	uint8_t code;
-	uint16_t checksum;
-	uint16_t id;
-	uint16_t sequence;
-};
 
 void icmp_respond(int fd_w, pcap_pkthdr &packet_header, char *packet_data){
     char response_data[65536];

@@ -6,9 +6,6 @@
 
 typedef int32_t bpf_int32;
 typedef u_int32_t bpf_u_int32;
-int debug = 0;
-bool file_is_big_endian = false;
-std::unordered_map<uint16_t,uint8_t[6]> arp_cache;
 
 void construct_path(const char* ip_str, const char* mask_str, char** paths) {
     unsigned int octets[4];

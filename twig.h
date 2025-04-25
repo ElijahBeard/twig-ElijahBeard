@@ -9,13 +9,13 @@
 #include <sys/time.h>
 
 #include "pheaders.h"
+#include "shrub.h"
 #include "utils.h"
 #include "icmp.h"
 #include "udp.h"
 #include "arp.h"
 
 char *dot_dmp;
-int THE_SILAS_SWITCH = 0;
 
 int read_pcap_header(int fd_w, pcap_file_header file_header){
     struct iovec iov[1];
@@ -138,51 +138,14 @@ int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
     return 0;
 }
 
-int main(int argc, char *argv[]) {
-    int argc_index = 1;
-    // CLI Parsing
-    if (argc < 2) {
-        printf("Usage: %s [-d] [-i <ip address> <mask>] [<pfile.dmp>]\n",argv[0]);
-        return 1;
-    }
-    if ((strcmp(argv[1], "-h") == 0)||(strcmp(argv[1], "--help") == 0)) {
-        printf("Usage: %s [-d] [-i <ip address> <mask>] [<pfile.dmp>]\n",argv[0]);
-        return 0;
-    }
-    if (strcmp(argv[1],"-d") == 0)  {
-        argc_index++; debug = 1; dot_dmp = argv[2];
-    }
-    if (strcmp(argv[argc_index], "-i") == 0) {
-        const char* ip_str = argv[argc_index + 1];
-        const char* mask_str = argv[argc_index + 2];
-        // construct the file name from given ip and mask
-        char* file_paths[2];
-        construct_path(ip_str,mask_str,file_paths);
-        printf("%s\n",file_paths[0]);
-        printf("%s\n",file_paths[1]);
-        if(THE_SILAS_SWITCH){
-            // looks for file in .
-            dot_dmp = file_paths[0];
-        } else {
-            // looks for file in ../Twig_tools/
-            dot_dmp = file_paths[1];
-        }
-    } else {
-        dot_dmp = argv[1];
-    }
-    struct stat buffer;
-    while (stat(dot_dmp, &buffer) != 0) {
-        printf("Waiting for network %s to exist...\n",dot_dmp);
-        sleep(2);
-    }
-
+void process_packet(char* file) {
     // File Descriptor Stuff
-    int fd_w = open(dot_dmp, O_WRONLY | O_APPEND);
+    int fd_w = open(file, O_WRONLY | O_APPEND);
     if (fd_w < 0) {
         perror("open");
         exit(1);
     }
-    int fd_r = open(dot_dmp,O_RDONLY);
+    int fd_r = open(file,O_RDONLY);
     if (fd_r < 0) {
         perror("open");
         exit(1);
@@ -200,5 +163,4 @@ int main(int argc, char *argv[]) {
     }
     close(fd_r);
     close(fd_w);
-    return 0;
 }
