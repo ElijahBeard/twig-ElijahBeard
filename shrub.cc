@@ -22,11 +22,9 @@ void process_packet(int interface_idx) {
         
     ipv4_hdr* ip = (ipv4_hdr*)(packet + sizeof(eth_hdr));
     bool local = false;
-    int local_iface = -1;
     for (int i = 0; i < num_interfaces; i++) {
         if (ip->dest == interfaces[i].ipv4_addr) {
             local = true;
-            local_iface = i;
             break;
         }
     }
