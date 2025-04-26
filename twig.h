@@ -53,7 +53,7 @@ void process_packet(int interface_idx) {
     if (ntohs(eth->type) != 0x0800) return; // not ipv4
     ipv4_hdr* ip = (ipv4_hdr*)(packet + sizeof(eth_hdr));
     uint8_t ip_hl = (ip->version_ihl & 0x0f) * 4;
-    uint16_t total_len = ntohs(ip->total_length);
+    //uint16_t total_len = ntohs(ip->total_length);
 
     // if dest is current interface
     bool local = false;

@@ -20,7 +20,13 @@ Structure
 # TODO 
 - [x] parse_input(int argc, char* argv[])
 - [x] interfaces init
-- [x] interfaces loop
-- [x] correctly read packet
-- [x] correctly write packet
-- [x] RIPv2
+- [_] interfaces loop
+- [_] correctly read packet
+- [_] correctly write packet
+- [x] routing tables init
+- [_] utilize routing tables
+- [/] icmp
+- [_] udp
+- [_] udp time
+- [_] udp ping
+- [_] rip
