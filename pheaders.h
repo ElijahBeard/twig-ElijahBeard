@@ -87,3 +87,19 @@ struct icmp_hdr {
 	uint16_t id;
 	uint16_t sequence;
 };
+
+// RIP
+struct rip_hdr {
+	uint8_t command;
+	uint8_t version;
+	uint16_t zero;
+};
+
+struct rip_entry {
+	uint16_t family;
+	uint16_t tag;
+	uint32_t ip;
+	uint32_t subnet;
+	uint32_t next_hop;
+	uint32_t metric;
+};

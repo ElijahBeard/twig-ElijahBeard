@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
     }
 
     init_routing_table();
-
+    
     time_t last_rip = 0;
     while(1) {
         fd_set readfds;

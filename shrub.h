@@ -28,9 +28,10 @@ struct interface {
 struct route {
     uint32_t dest_ip;
     uint32_t mask;
-    uint32_t next_hop;       // Next hop IP (0 for directly connected)
-    int metric;              // Hop count (0-16)
+    uint32_t next_hop;
+    uint32_t metric;
     int interface_idx;
+    time_t last_update;
 };
 
 int debug = 0;
