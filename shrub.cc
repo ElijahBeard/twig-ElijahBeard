@@ -21,7 +21,7 @@ void process_packet(int interface_idx) {
         pph.caplen = ntohl(pph.caplen);
         pph.len = ntohl(pph.len);
     }
-    pritnf("im abt to read yo\n");
+    printf("im abt to read yo\n");
     ret = read(interfaces[interface_idx].fd_r,packet,pph.caplen);
     if (ret < (int)pph.caplen) return;
     printf("just read %d bytes out of packet. true psize: %d\n",ret,(int)pph.caplen);
