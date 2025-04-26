@@ -67,11 +67,11 @@ void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* p
     udp.checksum = udp_checksum(*pph,&ip,&udp); // if doesnt work try i_ variants
 
     // insert udp to buffer
-    size_t udp_payload_len = ntohs(i_udp->len) - sizeof(struct udp_hdr);
+    size_t udp_payload_len = pph->caplen - sizeof(struct eth_hdr) - (i_ip->version_ihl & 0x0f)*4 - sizeof(struct udp_hdr);
     buffer.insert(buffer.end(), packet + sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4 + sizeof(struct udp_hdr),
                   packet + sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4 + sizeof(struct udp_hdr) + udp_payload_len);
 
-    write_packet(interface_idx,buffer.data(),sizeof(buffer));
+    write_packet(interface_idx, buffer.data(), buffer.size());
 }
 
 void udp_time(int interface_idx, const struct pcap_pkthdr* pph, const char* packet){

@@ -80,8 +80,8 @@ void process_packet(int interface_idx) {
 
         int out_iface = routing_table[best_idx].interface_idx;
         uint32_t next_hop = routing_table[best_idx].next_hop ? routing_table[best_idx].next_hop : ip->dest;
-        uint16_t cache_key = ntohs(next_hop & 0xFFFF);
-
+        uint32_t cache_key = next_hop;
+        
         if (arp_cache.count(cache_key)) {
             memcpy(eth->dst, arp_cache[cache_key], 6);
             memcpy(eth->src, interfaces[out_iface].mac_addr, 6);
