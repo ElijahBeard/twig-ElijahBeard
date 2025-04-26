@@ -66,7 +66,7 @@ void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* p
     udp.sport = udp.dport;
     udp.dport = tmp;
     udp.checksum = 0;
-    udp.checksum = udp_checksum(*pph,&ip,&udp); // if doesnt work try i_ variants
+    //udp.checksum = udp_checksum(*pph,&ip,&udp); // if doesnt work try i_ variants
     // insert udp to buffer
     udp.len = htons(sizeof(struct udp_hdr) + udp_payload_len);
     buffer.insert(buffer.end(), packet + sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4 + sizeof(struct udp_hdr),
@@ -79,6 +79,7 @@ void udp_time(int interface_idx, const struct pcap_pkthdr* pph, const char* pack
     const struct eth_hdr* i_eth = (const struct eth_hdr*)packet;
     const struct ipv4_hdr* i_ip = (const struct ipv4_hdr*)(packet + sizeof(struct eth_hdr));
     const struct udp_hdr* i_udp = (const struct udp_hdr*)(packet+sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4);
+    size_t udp_payload_len = pph->caplen - sizeof(struct eth_hdr) - (i_ip->version_ihl & 0x0f)*4 - sizeof(struct udp_hdr);
 
     // response packet
     std::vector<uint8_t> buffer;
@@ -108,7 +109,7 @@ void udp_time(int interface_idx, const struct pcap_pkthdr* pph, const char* pack
     struct udp_hdr udp;
     udp.sport = htons(37);
     udp.dport = i_udp->sport;
-    udp.len = htons(sizeof(struct udp_hdr) + 4);
+    udp.len = htons(sizeof(struct udp_hdr) + udp_payload_len);
     udp.checksum = 0;
     buffer.insert(buffer.end(), (uint8_t*)&udp, (uint8_t*)&udp + sizeof(udp));
 
