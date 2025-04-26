@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <vector.h>
 
 #include "pheaders.h"
 #include "utils.h"
@@ -14,33 +15,43 @@
 #include "shrub.h" // for globals
 
 void icmp_respond(int interface_idx, const pcap_pkthdr& pph, const char* packet){ // make sure you change implremenetion of icmp_respond in process packet
-    const eth_hdr* in_eth = (const eth_hdr*)packet;
-    const ipv4_hdr* in_ip = (const ipv4_hdr*)(packet + sizeof(eth_hdr));
-    const icmp_hdr* in_icmp = (const icmp_hdr*)((char*)in_ip + (in_ip->version_ihl & 0x0f) * 4);
+    const struct eth_hdr* i_eth = (const struct eth_hdr*)packet;
+    const struct ipv4_hdr* i_ip = (const struct ipv4_hdr*)(packet + sizeof(struct eth_hdr));
+    const struct icmp_hdr* i_icmp = (const struct icmp_hdr*)(packet+sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4);
 
-    std::vector<char> buffer;
-    eth_hdr eth = {in_eth->src, interfaces[interface_idx].mac_addr, htons(0x0800)}; // this error is from mac address indifference
-    buffer.insert(buffer.end(), (char*)&eth, (char*)&eth + sizeof(eth));
-
-    ipv4_hdr ip = *in_ip;
+    // response packet
+    std::vector<uint8_t> buffer;
+    
+    // swap eth
+    struct eth_hdr eth;
+    memcpy(eth.dst,i_eth->src,6);
+    memcpy(eth.src,interfaces[interface_idx].mac_addr,6);
+    eth.type = htons(0x0800);
+    buffer.insert(buffer.end(),(uint8_t*)&eth,(uint8_t*)&eth + sizeof(eth));
+    
+    // swap ip
+    struct ipv4_hdr ip = *i_ip;
     ip.src = interfaces[interface_idx].ipv4_addr;
-    ip.dest = in_ip->src;
+    ip.dest = i_ip->src;
+    ip.ttl = 255;
     ip.checksum = 0;
-    ip.checksum = checksum(&ip, sizeof(ip)); // args or mac address thing 
-    buffer.insert(buffer.end(), (char*)&ip, (char*)&ip + sizeof(ip));
+    ip.checksum = checksum(&ip,(ip.version_ihl & 0x0f) * 4);
+    buffer.insert(buffer.end(),(uint8_t*)&ip,(uint8_t*)&ip + sizeof(ip));
 
-    icmp_hdr icmp = *in_icmp;
-    icmp.type = 0; // Echo reply
+    // icmp code change
+    struct icmp_hdr icmp = *i_icmp;
+    icmp.type = 0;
+    icmp.code = 0;
     icmp.checksum = 0;
-    buffer.insert(buffer.end(), (char*)&icmp, (char*)&icmp + sizeof(icmp));
+    buffer.insert(buffer.end(),(uint8_t*)&icmp,(uint8_t*)&icmp + sizeof(ip));
 
-    buffer.insert(buffer.end(), packet + sizeof(eth_hdr) + (in_ip->version_ihl & 0x0f) * 4 + sizeof(icmp_hdr),
-                  packet + pph.caplen);
+    size_t icmp_len = pph->caplen - (sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4 + sizeof(struct icmp_hdr));
+    buffer.insert(buffer.end(),packet + sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4 + sizeof(struct icmp_hdr), packet + pph->caplen)
 
-    icmp.checksum = checksum(buffer.data() + sizeof(eth_hdr) + sizeof(ipv4_hdr), // i think this one is also checksum args and mac address indifference
-                             buffer.size() - sizeof(eth_hdr) - sizeof(ipv4_hdr));
-    memcpy(buffer.data() + sizeof(eth_hdr) + sizeof(ipv4_hdr), &icmp, sizeof(icmp));
+    // icmp checksum
+    icmp.checksum = checksum(buffer.data() + sizeof(struct eth_hdr) + sizeof(struct ipv4_hdr),
+                             buffer.size() - sizeof(struct eth_hdr) - sizeof(struct ipv4_hdr));
+    memcpy(buffer.data() + sizeof(struct eth_hdr) + sizeof(struct ipv4_hdr), &icmp, sizeof(icmp));
 
-    write_packet(interface_idx, buffer.data(), buffer.size());
-    if (debug) printf("Sent ICMP echo reply to %s\n", ip_to_str(in_ip->src).c_str());
+    write_packet(interface_idx,buffer.data(),buffer.size());
 }
