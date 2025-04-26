@@ -12,7 +12,7 @@ Structure
 /shrub-ElijahBeard
   |_ shrub.cc (parse input, parse interface, setup interface, loop through interfaces, uses twig.h read_packet / process_packet)
   |_ shrub.h (contains globals, input parsing, function definition)
-  |_ route.h (contains routing tables, init_routing, add_route)
+  |_ rip.h (contains routing tables, init_routing, add_route)
   |_ utils.h (swap_16, swap_32, ip_to_mac, ip_to_string, string_to_ip, calc_network)
   |_ arp.h
   |_ icmp.h

@@ -17,7 +17,11 @@ void process_packet(int interface_idx) {
     ret = read(interfaces[interface_idx].fd_r,packet,pph.caplen);
     if (ret < (int)pph.caplen) return;
 
-    // splitting into structures
+    if (pph.caplen > sizeof(packet)) {
+        if (debug) printf("Dropping oversized packet: %u > %zu\n", pph.caplen, sizeof(packet));
+        return;
+    }
+    
     eth_hdr* eth = (eth_hdr*)packet;
     //if (memcmp(eth->src, interfaces[interface_idx].mac_addr, 6) == 0) return;
         
@@ -81,7 +85,7 @@ void process_packet(int interface_idx) {
         int out_iface = routing_table[best_idx].interface_idx;
         uint32_t next_hop = routing_table[best_idx].next_hop ? routing_table[best_idx].next_hop : ip->dest;
         uint32_t cache_key = next_hop;
-        
+
         if (arp_cache.count(cache_key)) {
             memcpy(eth->dst, arp_cache[cache_key], 6);
             memcpy(eth->src, interfaces[out_iface].mac_addr, 6);

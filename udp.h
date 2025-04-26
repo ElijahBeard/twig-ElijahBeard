@@ -104,7 +104,13 @@ void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* p
 
     if (udp_payload_len > 0) {
         const char* payload_start = packet + sizeof(struct eth_hdr) + ip_header_len + sizeof(struct udp_hdr);
-        buffer.insert(buffer.end(), payload_start, payload_start + udp_payload_len);
+        const char* payload_end = payload_start + udp_payload_len;
+        if (payload_end > packet + pph->caplen) {
+            if (debug) printf("Payload exceeds packet buffer\n");
+            payload_end = packet + pph->caplen;
+            udp_payload_len = payload_end - payload_start;
+        }
+        buffer.insert(buffer.end(), payload_start, payload_end);
     }
     write_packet(interface_idx, buffer.data(), buffer.size());
 }
