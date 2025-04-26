@@ -92,7 +92,7 @@ void setup_interface(const char* interface_, int interface_idx) {
     uint32_t mask_length = atoi(mask_str.c_str());
 
     uint32_t network = calc_network(ip, mask_length);
-    std::string filename = "../Twig_tools/" + ip_to_str(network) + "_" + mask_str + ".dmp";
+    std::string filename = ip_to_str(network) + "_" + mask_str + ".dmp";
 
     if (debug) {
         printf("\nfilename: %s\n", filename.c_str());

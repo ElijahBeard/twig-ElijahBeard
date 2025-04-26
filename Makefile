@@ -17,3 +17,4 @@ $(OBJECTS): $(HEADERS)
 clean:
 	rm -f $(TARGET) *.o
 	rm -f ../Twig_tools/172.31.128.0_24.dmp
+	rm -f ../Twig_tools/shrub
