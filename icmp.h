@@ -1,19 +1,10 @@
 #include <cstdlib>
-#include <ctime>
-#include <cstdio>
-#include <iostream>
-#include <fcntl.h>
-#include <sys/uio.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/time.h>
 #include <vector>
 
 #include "pheaders.h"
 #include "utils.h"
 
 #include "shrub.h" // for globals
-#include "twig.h"
 
 void icmp_respond(int interface_idx, const pcap_pkthdr& pph, const char* packet){ // make sure you change implremenetion of icmp_respond in process packet
     const struct eth_hdr* i_eth = (const struct eth_hdr*)packet;
@@ -45,8 +36,6 @@ void icmp_respond(int interface_idx, const pcap_pkthdr& pph, const char* packet)
     icmp.code = 0;
     icmp.checksum = 0;
     buffer.insert(buffer.end(),(uint8_t*)&icmp,(uint8_t*)&icmp + sizeof(ip));
-
-    size_t icmp_len = pph.caplen - (sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4 + sizeof(struct icmp_hdr));
     buffer.insert(buffer.end(),packet + sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4 + sizeof(struct icmp_hdr), packet + pph.caplen);
 
     // icmp checksum

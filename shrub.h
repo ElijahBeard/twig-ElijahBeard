@@ -5,8 +5,17 @@
 #include <iostream>
 #include <set>
 #include <vector>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <arpa/inet.h>
+#include <sys/uio.h>
 
 #include "utils.h"
+#include "pheaders.h"
 
 struct interface {
     uint32_t ipv4_addr;
@@ -101,7 +110,6 @@ void setup_interface(const char* interface_, int interface_idx) {
     }
 
     // wait for file to exist
-    struct stat buffer;
     while (access(filename.c_str(),F_OK) != 0) {
         printf("Waiting for network %s to exist...\n",filename.c_str());
         sleep(2);
@@ -174,5 +182,25 @@ void init_routing_table() {
         }
         routing_table.push_back({0, 0, next_hop, 1, iface_idx});
         print_routing_table();
+    }
+}
+
+void write_packet(int interface_idx, const void* data, size_t len) {
+    struct pcap_pkthdr pph;
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    pph.ts_secs = tv.tv_sec;
+    pph.ts_usecs = tv.tv_usec;
+    pph.caplen = len;
+    pph.len = len;
+
+    struct iovec iov[2];
+    iov[0].iov_base = &pph;
+    iov[0].iov_len = sizeof(pph);
+    iov[1].iov_base = const_cast<void*>(data);
+    iov[1].iov_len = len;
+
+    if (writev(interfaces[interface_idx].fd_w,iov,2) != sizeof(pph) + len) {
+        perror("writev");
     }
 }
