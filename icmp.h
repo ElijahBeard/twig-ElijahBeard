@@ -13,6 +13,7 @@
 #include "utils.h"
 
 #include "shrub.h" // for globals
+#include "twig.h"
 
 void icmp_respond(int interface_idx, const pcap_pkthdr& pph, const char* packet){ // make sure you change implremenetion of icmp_respond in process packet
     const struct eth_hdr* i_eth = (const struct eth_hdr*)packet;
