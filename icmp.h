@@ -27,8 +27,8 @@ void icmp_respond(int interface_idx, const pcap_pkthdr& pph, const char* packet)
     ip.dest = i_ip->src;
     ip.ttl = 255;
     ip.checksum = 0;
-    ip.checksum = checksum(&ip,(ip.version_ihl & 0x0f) * 4);
-    buffer.insert(buffer.end(),(uint8_t*)&ip,(uint8_t*)&ip + sizeof(ip));
+    ip.checksum = checksum(&ip, (ip.version_ihl & 0x0f) * 4);
+    buffer.insert(buffer.end(), (uint8_t*)&ip, (uint8_t*)&ip + sizeof(ip));
 
     // icmp code change
     struct icmp_hdr icmp = *i_icmp;
