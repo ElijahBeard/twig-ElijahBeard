@@ -32,10 +32,10 @@ uint16_t udp_checksum(pcap_pkthdr packet_header, ipv4_hdr *ip_response, udp_hdr 
     uint16_t udp_check = checksum(reinterpret_cast<uint16_t*>(checksum_buf), total_len);
     delete[] checksum_buf;
     return udp_check;
+    
 }
 
 void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* packet) {
-    // 1. Parse headers with boundary checks
     if (pph->caplen < sizeof(struct eth_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr)) {
         if (debug) printf("Packet too small for UDP response\n");
         return;
@@ -44,7 +44,6 @@ void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* p
     const struct eth_hdr* i_eth = (const struct eth_hdr*)packet;
     const struct ipv4_hdr* i_ip = (const struct ipv4_hdr*)(packet + sizeof(struct eth_hdr));
     
-    // Verify IP header length
     uint8_t ip_header_len = (i_ip->version_ihl & 0x0f) * 4;
     if (pph->caplen < sizeof(struct eth_hdr) + ip_header_len + sizeof(struct udp_hdr)) {
         if (debug) printf("Invalid IP header length\n");
@@ -99,6 +98,7 @@ void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* p
     }
     write_packet(interface_idx, buffer.data(), buffer.size());
 }
+
 void udp_time(int interface_idx, const struct pcap_pkthdr* pph, const char* packet){
     const struct eth_hdr* i_eth = (const struct eth_hdr*)packet;
     const struct ipv4_hdr* i_ip = (const struct ipv4_hdr*)(packet + sizeof(struct eth_hdr));
