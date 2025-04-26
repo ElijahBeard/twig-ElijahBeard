@@ -14,16 +14,16 @@ void process_packet(int interface_idx) {
     if (ret <= 0 ) return;
     if (ret < (int)sizeof(pph)) return;
 
-    if(debug) printf("just read %d bytes, processing...\n",ret);
+    if(debug) printf("just read %d bytes out of pph. true psize: %d processing...\n",ret,(int)sizeof(pph));
 
-    if(debug) printf("Swapping Endianess!\n");
     if (file_is_big_endian) {
+        if(debug) printf("Swapping Endianess!\n");
         pph.caplen = swap32(pph.caplen);
         pph.len = swap32(pph.len);
     }
-
     ret = read(interfaces[interface_idx].fd_r,packet,pph.caplen);
     if (ret < (int)pph.caplen) return;
+    printf("just read %d bytes out of packet. true psize: %d\n",ret,(int)pph.caplen);
 
     
     eth_hdr* eth = (eth_hdr*)packet;
