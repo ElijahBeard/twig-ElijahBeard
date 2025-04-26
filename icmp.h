@@ -35,13 +35,19 @@ void icmp_respond(int interface_idx, const pcap_pkthdr& pph, const char* packet)
     icmp.type = 0;
     icmp.code = 0;
     icmp.checksum = 0;
-    buffer.insert(buffer.end(),(uint8_t*)&icmp,(uint8_t*)&icmp + sizeof(ip));
-    buffer.insert(buffer.end(),packet + sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4 + sizeof(struct icmp_hdr), packet + pph.caplen);
+    buffer.insert(buffer.end(), (uint8_t*)&icmp, (uint8_t*)&icmp + sizeof(icmp));
+
+    size_t icmp_payload_len = pph.caplen - (sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4 + sizeof(struct icmp_hdr));
+    buffer.insert(buffer.end(), packet + sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4 + sizeof(struct icmp_hdr),
+                  packet + pph.caplen);
 
     // icmp checksum
     icmp.checksum = checksum(buffer.data() + sizeof(struct eth_hdr) + sizeof(struct ipv4_hdr),
                              buffer.size() - sizeof(struct eth_hdr) - sizeof(struct ipv4_hdr));
     memcpy(buffer.data() + sizeof(struct eth_hdr) + sizeof(struct ipv4_hdr), &icmp, sizeof(icmp));
 
-    write_packet(interface_idx,buffer.data(),sizeof(buffer));
+    write_packet(interface_idx, buffer.data(), buffer.size());
+    if (debug) {
+        printf("Sent ICMP echo reply to %s\n", ip_to_str(i_ip->src).c_str());
+    }
 }

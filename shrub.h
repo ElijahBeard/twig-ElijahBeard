@@ -40,6 +40,7 @@ std::vector<route> routing_table;
 int rip_interval = 30;
 std::string default_route;
 bool file_is_big_endian = false;
+#define PCAP_MAGIC 0xa1b2c3d4
 
 // prints help lol
 void print_help(){
@@ -203,7 +204,8 @@ void write_packet(int interface_idx, const void* data, size_t len) {
     iov[1].iov_base = const_cast<void*>(data);
     iov[1].iov_len = len;
 
-    if (writev(interfaces[interface_idx].fd_w,iov,2) != sizeof(pph) + len) {
+    ssize_t expected = static_cast<ssize_t>(sizeof(pph) + len);
+    if (writev(interfaces[interface_idx].fd_w, iov, 2) != expected) {
         perror("writev");
     }
 }

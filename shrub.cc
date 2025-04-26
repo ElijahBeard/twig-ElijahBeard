@@ -70,7 +70,7 @@ void process_packet(int interface_idx) {
         
         int best_idx = -1;
         uint32_t best_mask = 0;
-        for (int i = 0; i < routing_table.size(); i++) {
+        for (size_t i = 0; i < routing_table.size(); i++) {
             if ((ip->dest & routing_table[i].mask) == routing_table[i].dest_ip
                 && routing_table[i].mask >= best_mask) 
             {
