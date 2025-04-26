@@ -5,7 +5,6 @@
 #include "pheaders.h"
 #include "shrub.h"
 #include "utils.h"
-#include "udp.h"
 
 void send_rip_announcement() {
     for(int i = 0; i < num_interfaces; i++) {
@@ -25,7 +24,7 @@ void send_rip_announcement() {
         ip.total_length = htons(sizeof(ip) + sizeof(udp_hdr) + sizeof(rip_hdr) + routing_table.size()*sizeof(rip_entry));
         ip.ident = 0;
         ip.flags_offset = 0;
-        ip.ttl = 1; // local network
+        ip.ttl = 64; // local network
         ip.protocol = 17; // UDP
         ip.checksum = 0;
         ip.src = interfaces[i].ipv4_addr;
@@ -52,11 +51,8 @@ void send_rip_announcement() {
             entry.tag = 0;
             entry.ip = route.dest_ip;
             entry.subnet = route.mask;
-            entry.next_hop = 0; // Same as sender
-            
-            entry.metric = (route.interface_idx == i) ? htonl(16) : 
-                         htonl(route.metric + 1);
-            
+            entry.next_hop = 0; // sender
+            entry.metric = htonl(route.metric + 1);
             buffer.insert(buffer.end(), (uint8_t*)&entry, (uint8_t*)&entry + sizeof(entry));
         }
 
@@ -109,4 +105,5 @@ void process_rip(int interface_idx, ipv4_hdr* ip, udp_hdr* udp, const char* data
             });
         }        
     print_routing_table();
+    }
 }

@@ -42,7 +42,7 @@ void arp_respond(int interface_idx, const pcap_pkthdr& pph, const char* packet) 
 
     write_packet(interface_idx, buffer.data(), buffer.size());
 
-    uint16_t cache_key = ntohs(i_arp->sender_ip & 0xFFFF);
+    uint16_t cache_key = ntohs(i_arp->sender_ip & 0xFFFF); // maybe try uint32_t cache_key = i_arp->sender_ip;
     memcpy(arp_cache[cache_key], i_arp->sender_mac, 6);
 
     if (debug) printf("Sent ARP reply to %s, cached MAC for key %u\n", ip_to_str(i_arp->sender_ip).c_str(), cache_key);

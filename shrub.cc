@@ -5,6 +5,7 @@
 #include "icmp.h"
 #include "udp.h"
 #include "arp.h"
+#include "rip.h"
 
 void process_packet(int interface_idx) {
     pcap_pkthdr pph;
@@ -48,10 +49,10 @@ void process_packet(int interface_idx) {
             else if (ntohs(udp->dport) == 37) {
                 udp_time(interface_idx,&pph,packet);
             }
-            // else {
-            //     // process_rip(interfaces_idx,ip,udp,(char*)udp + sizeof(udp_hdr)
-            //     //             , total_len - ip_hl - sizeof(udp_hdr));
-            // }
+            else {
+                process_rip(interface_idx, ip, udp, (char*)udp + sizeof(udp_hdr), 
+                pph.caplen - sizeof(eth_hdr) - (ip->version_ihl & 0x0f)*4 - sizeof(udp_hdr));
+            }
         }
     } 
     // case forwarding
@@ -105,7 +106,7 @@ int main(int argc, char* argv[]) {
     }
 
     init_routing_table();
-    
+
     time_t last_rip = 0;
     while(1) {
         fd_set readfds;
@@ -125,7 +126,7 @@ int main(int argc, char* argv[]) {
             if (num_interfaces > 1) {
                 time_t now = time(NULL);
                 if(now - last_rip >= rip_interval) {
-                    //send_rip_announcement();
+                    send_rip_announcement();
                     last_rip = now;
                 }
             }
