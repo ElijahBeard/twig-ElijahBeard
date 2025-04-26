@@ -20,16 +20,13 @@ void process_packet(int interface_idx) {
     eth_hdr* eth = (eth_hdr*)packet;
     //if (memcmp(eth->src, interfaces[interface_idx].mac_addr, 6) == 0) return;
         
-    if (ntohs(eth->type) != 0x0800) return; // not ipv4
     ipv4_hdr* ip = (ipv4_hdr*)(packet + sizeof(eth_hdr));
-    uint8_t ip_hl = (ip->version_ihl & 0x0f) * 4;
-    //uint16_t total_len = ntohs(ip->total_length);
-
-    // if dest is current interface
     bool local = false;
+    int local_iface = -1;
     for (int i = 0; i < num_interfaces; i++) {
         if (ip->dest == interfaces[i].ipv4_addr) {
             local = true;
+            local_iface = i;
             break;
         }
     }
@@ -38,7 +35,7 @@ void process_packet(int interface_idx) {
     if (local) {
         // ICMP
         if (ip->protocol == 1) {
-            icmp_hdr* icmp = (icmp_hdr*)(packet + sizeof(eth_hdr) + ip_hl);
+            icmp_hdr* icmp = (icmp_hdr*)(packet + sizeof(eth_hdr) + (ip->version_ihl & 0x0f) * 4);
             if(icmp->type == 8) {
                 icmp_respond(interface_idx,pph,packet);
             }
@@ -46,7 +43,7 @@ void process_packet(int interface_idx) {
 
         // UDP
         else if (ip->protocol == 17) {
-            udp_hdr* udp = (udp_hdr*)(packet + sizeof(eth_hdr) + ip_hl);
+            udp_hdr* udp = (udp_hdr*)(packet + sizeof(eth_hdr) + (ip->version_ihl & 0x0f) * 4);
             if (ntohs(udp->dport) == 7) {
                 udp_respond(interface_idx,&pph,packet);
             } 
@@ -60,46 +57,46 @@ void process_packet(int interface_idx) {
         }
     } 
     // case forwarding
-    else if (num_interfaces > 1) { 
+    else if (num_interfaces > 1) {
         ip->ttl--;
-        
         if (ip->ttl == 0) {
-            if (debug) printf("UR DONE X_X\n");
+            if (debug) printf("TTL expired for packet to %s\n", ip_to_str(ip->dest).c_str());
             return;
         }
-        
+
         int best_idx = -1;
         uint32_t best_mask = 0;
         for (size_t i = 0; i < routing_table.size(); i++) {
-            if ((ip->dest & routing_table[i].mask) == routing_table[i].dest_ip
-                && routing_table[i].mask >= best_mask) 
-            {
-                    best_idx = i;
-                    best_mask = routing_table[i].mask;
+            if ((ip->dest & routing_table[i].mask) == routing_table[i].dest_ip &&
+                routing_table[i].mask >= best_mask) {
+                best_idx = i;
+                best_mask = routing_table[i].mask;
             }
-                
         }
 
         if (best_idx == -1) {
-            if(debug) printf("No route to %s\n",ip_to_str(ip->dest).c_str());
+            if (debug) printf("No route to %s\n", ip_to_str(ip->dest).c_str());
             return;
         }
 
         int out_iface = routing_table[best_idx].interface_idx;
-        uint32_t next_hop = routing_table[best_idx].next_hop;
-        memcpy(eth->src, interfaces[out_iface].mac_addr, 6);
-        uint16_t cache_key = ntohs((next_hop ? next_hop : ip->dest) & 0xFFFF);
+        uint32_t next_hop = routing_table[best_idx].next_hop ? routing_table[best_idx].next_hop : ip->dest;
+        uint16_t cache_key = ntohs(next_hop & 0xFFFF);
+
         if (arp_cache.count(cache_key)) {
             memcpy(eth->dst, arp_cache[cache_key], 6);
+            memcpy(eth->src, interfaces[out_iface].mac_addr, 6);
+            ip->checksum = 0;
+            ip->checksum = checksum(ip, ((ip->version_ihl & 0x0f) * 4));
+            write_packet(out_iface, packet, pph.caplen);
+            if (debug) printf("Forwarded packet to %s via iface %d\n", ip_to_str(ip->dest).c_str(), out_iface);
         } else {
-            ip_to_mac(next_hop ? next_hop : ip->dest, eth->dst);
+            // Send ARP request and drop packet (rely on retransmission)
+            arp_request(out_iface, next_hop);
+            if (debug) printf("No MAC for %s, sent ARP request, dropping packet\n", ip_to_str(next_hop).c_str());
+            return;
         }
-        ip->checksum = 0;
-        ip->checksum = checksum(ip, ip_hl);
-        write_packet(out_iface, packet, pph.caplen);
-        if (debug) printf("Forwarded packet to %s via iface %d\n", ip_to_str(ip->dest).c_str(), out_iface);
     }
-
 }
 
 int main(int argc, char* argv[]) {

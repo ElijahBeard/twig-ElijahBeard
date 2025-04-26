@@ -48,6 +48,31 @@ void arp_respond(int interface_idx, const pcap_pkthdr& pph, const char* packet) 
     if (debug) printf("Sent ARP reply to %s, cached MAC for key %u\n", ip_to_str(i_arp->sender_ip).c_str(), cache_key);
 }
 
+void arp_request(int interface_idx, uint32_t target_ip) {
+    std::vector<uint8_t> buffer;
+
+    struct eth_hdr eth;
+    memset(eth.dst, 0xFF, 6);
+    memcpy(eth.src, interfaces[interface_idx].mac_addr, 6);
+    eth.type = htons(0x0806);
+    buffer.insert(buffer.end(), (uint8_t*)&eth, (uint8_t*)&eth + sizeof(eth));
+
+    struct arp_hdr arp;
+    arp.hardware_type = htons(1);
+    arp.protocol_type = htons(0x0800);
+    arp.hardware_len = 6;
+    arp.protocol_len = 4;
+    arp.op = htons(1);
+    memcpy(arp.sender_mac, interfaces[interface_idx].mac_addr, 6);
+    arp.sender_ip = interfaces[interface_idx].ipv4_addr;
+    memset(arp.target_mac, 0, 6); // UNKNOWN GET THIS FIXED
+    arp.target_ip = target_ip;
+    buffer.insert(buffer.end(), (uint8_t*)&arp, (uint8_t*)&arp + sizeof(arp));
+
+    write_packet(interface_idx, buffer.data(), buffer.size());
+    if (debug) printf("Sent ARP request for %s on iface %d\n", ip_to_str(target_ip).c_str(), interface_idx);
+}
+
 // void cache_arp(arp_hdr *arp){
 //     if (ntohs(arp->hardware_type) == 1 && ntohs(arp->protocol_type) == 0x0800 &&
 //         arp->hardware_len == 6 && arp->protocol_len == 4) 
