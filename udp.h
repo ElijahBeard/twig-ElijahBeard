@@ -29,7 +29,7 @@ uint16_t udp_checksum(pcap_pkthdr packet_header, ipv4_hdr *ip_response, udp_hdr 
     memcpy(checksum_buf, &p_udp, sizeof(p_udp));
     memcpy(checksum_buf + sizeof(p_udp), udp_response, sizeof(udp_hdr) + udp_data_len);
 
-    uint16_t udp_check = checksum(reinterpret_cast<uint16_t*>(checksum_buf), total_len);    return udp_check;
+    uint16_t udp_check = checksum(reinterpret_cast<uint16_t*>(checksum_buf), total_len);
     delete[] checksum_buf;
     return udp_check;
 }
@@ -117,5 +117,5 @@ void udp_time(int interface_idx, const struct pcap_pkthdr* pph, const char* pack
     uint32_t time_protocol = htonl(static_cast<uint32_t>(now.tv_sec) + epoch_offset);
     buffer.insert(buffer.end(), (uint8_t*)&time_protocol, (uint8_t*)&time_protocol + 4);
 
-    write_packet(interface_idx,buffer.data(),sizeof(buffer));
+    write_packet(interface_idx, buffer.data(), buffer.size());
 };

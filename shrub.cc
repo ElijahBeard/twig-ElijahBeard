@@ -126,6 +126,7 @@ int main(int argc, char* argv[]) {
             if (num_interfaces > 1) {
                 time_t now = time(NULL);
                 if(now - last_rip >= rip_interval) {
+                    printf("im sending an epic rip announcement\n");
                     send_rip_announcement();
                     last_rip = now;
                 }
