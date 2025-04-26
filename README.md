@@ -1,4 +1,12 @@
 # SHRUB
+
+## For Silas or Grader
+```
+This version of shrub is one that I started on a new machine, due to having lost my laptop. Ostermann has granted me time to turn this in on saturday.
+
+The commits here are copied over from an old repo of shrub, but I decided to combine them because it felt nice.
+```
+
 Structure
 ```
 /shrub-ElijahBeard
