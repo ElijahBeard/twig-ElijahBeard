@@ -42,14 +42,15 @@ void construct_path(const char* ip_str, const char* mask_str, char** paths) {
         strcat(paths[1], filename);
 }
 
-uint16_t checksum(uint16_t* buf, int len) {
+uint16_t checksum(const void* data, size_t len) {
+    const uint16_t* buf = (const uint16_t*)data;
     uint32_t sum = 0;
-    for (; len > 1; len -= 2)
+    while (len > 1) {
         sum += *buf++;
-    if (len == 1)
-        sum += *(uint8_t*)buf;
-    sum = (sum >> 16) + (sum & 0xFFFF);
-    sum += (sum >> 16);
+        len -= 2;
+    }
+    if (len) sum += *(uint8_t*)buf;
+    while (sum >> 16) sum = (sum & 0xffff) + (sum >> 16);
     return ~sum;
 }
 
