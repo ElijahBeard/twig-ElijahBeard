@@ -137,7 +137,7 @@ int main(int argc, char* argv[]) {
         } else {
             for (int i = 0; i < num_interfaces; i++) {
                 if (FD_ISSET(interfaces[i].fd_r, &readfds)) {
-                    if (debug) printf("im processing a damn packet yo\n");
+                    //if (debug) printf("im processing a damn packet yo\n");
                     process_packet(i);
                 }
             }
