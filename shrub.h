@@ -41,6 +41,7 @@ int rip_interval = 30;
 std::string default_route;
 bool file_is_big_endian = false;
 
+// prints help lol
 void print_help(){
     printf("Usage: ./shrub [options]\n");
     printf("Options:\n");
@@ -52,6 +53,7 @@ void print_help(){
     exit(0);
 }
 
+// handles -i input converts to structs for interfaces vector
 std::vector<std::string> parse_interfaces(int argc, char* argv[]){
     std::vector<std::string> interfaces_;
     for (int i = 1; i < argc; i++) {
@@ -87,8 +89,8 @@ std::vector<std::string> parse_interfaces(int argc, char* argv[]){
     return interfaces_;
 }
 
+// opens file for interface and fills interface struct
 void setup_interface(const char* interface_, int interface_idx) {
-    // interface parsing
     std::string arg(interface_);
     size_t pos = arg.find('_');
     if (pos == std::string::npos) {
@@ -140,6 +142,7 @@ void setup_interface(const char* interface_, int interface_idx) {
     interfaces[interface_idx].fd_w = fd_w;
 }
 
+// prints routing table lol
 void print_routing_table() {
     if (!debug) return;
     printf("Routing Table:\n");

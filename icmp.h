@@ -43,5 +43,5 @@ void icmp_respond(int interface_idx, const pcap_pkthdr& pph, const char* packet)
                              buffer.size() - sizeof(struct eth_hdr) - sizeof(struct ipv4_hdr));
     memcpy(buffer.data() + sizeof(struct eth_hdr) + sizeof(struct ipv4_hdr), &icmp, sizeof(icmp));
 
-    write_packet(interface_idx,buffer.data(),buffer.size());
+    write_packet(interface_idx,buffer.data(),sizeof(buffer));
 }

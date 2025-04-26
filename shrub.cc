@@ -38,21 +38,21 @@ void process_packet(int interface_idx) {
     if (local) {
         // ICMP
         if (ip->protocol == 1) {
-            icmp_hdr* icmp = (icmp_hdr*)((char*)ip + ip_hl);
+            icmp_hdr* icmp = (icmp_hdr*)(packet + sizeof(eth_hdr) + ip_hl);
             if(icmp->type == 8) {
-                icmp_respond(interfaces[interface_idx].fd_w,pph,packet);
+                icmp_respond(interface_idx,pph,packet);
             }
         }
 
         // UDP
         else if (ip->protocol == 17) {
-            udp_hdr* udp = (udp_hdr*)((char*)ip + ip_hl);
-            if (ntohs(udp->dport) == 37) {
-                udp_time(interfaces[interface_idx].fd_w,pph,packet);
-            }
-            else if (ntohs(udp->dport) == 7) {
-                udp_respond(interfaces[interface_idx].fd_w,pph,packet);
+            udp_hdr* udp = (udp_hdr*)(packet + sizeof(eth_hdr) + ip_hl);
+            if (ntohs(udp->dport) == 7) {
+                udp_respond(interface_idx,&pph,packet);
             } 
+            else if (ntohs(udp->dport) == 37) {
+                udp_time(interface_idx,&pph,packet);
+            }
             // else {
             //     // process_rip(interfaces_idx,ip,udp,(char*)udp + sizeof(udp_hdr)
             //     //             , total_len - ip_hl - sizeof(udp_hdr));
