@@ -11,7 +11,7 @@
 struct interface {
     uint32_t ipv4_addr;
     uint32_t mask_length;
-    uint64_t mac_addr;
+    uint8_t mac_addr[6];
     int fd_r;
     int fd_w;
 };
@@ -125,13 +125,11 @@ void setup_interface(const char* interface_, int interface_idx) {
     }
     file_is_big_endian = (pfh.magic == swap32(PCAP_MAGIC));
 
-    interfaces[interface_idx] = {
-        .ipv4_addr = ip,
-        .mask_length = mask_length,
-        .mac_addr = ip_to_mac(ip),
-        .fd_r = fd_r,
-        .fd_w = fd_w
-    };
+    interfaces[interface_idx].ipv4_addr = ip;
+    interfaces[interface_idx].mask_length = mask_length;
+    ip_to_mac(ip, interfaces[interface_idx].mac_addr);
+    interfaces[interface_idx].fd_r = fd_r;
+    interfaces[interface_idx].fd_w = fd_w;
 }
 
 void print_routing_table() {

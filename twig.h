@@ -16,152 +16,112 @@
 
 #include "shrub.h" // for globals
 
-char *dot_dmp;
-
-int read_pcap_header(int fd_w, pcap_file_header file_header){
-    struct iovec iov[1];
-    iov[0].iov_base = &file_header;
-    iov[0].iov_len = sizeof(file_header);
-    ssize_t bytes_read = readv(fd_w, iov, 1);
-    if (bytes_read == 0) {
-        return 0;
-    }
-    if (bytes_read == -1) {
-        perror("readv");
-        return -1;
-    }
-
-    if (file_header.magic == PCAP_MAGIC) {  // 0xa1b2c3d4 
-        file_is_big_endian = false;
-    } else if (file_header.magic == swap32(PCAP_MAGIC)) {  
-        file_is_big_endian = true;
-        file_header.version_major = swap16(file_header.version_major);
-        file_header.version_minor = swap16(file_header.version_minor);
-        file_header.thiszone = swap32(file_header.thiszone);
-        file_header.sigfigs = swap32(file_header.sigfigs);
-        file_header.snaplen = swap32(file_header.snaplen);
-        file_header.linktype = swap32(file_header.linktype);
-    } else {
-        fprintf(stderr, "invalid magic number: 0x%08x\n", file_header.magic);
-        return -1;
-    }
-
-    printf("magic:0x%x\nvers:%u.%u\nzone:%u\nsigfigs:%u\nsnaplen:%u\nlinktype:%u\n",
-        file_header.magic ,file_header.version_major, 
-        file_header.version_minor, file_header.thiszone,
-        file_header.sigfigs, file_header.snaplen, file_header.linktype);
-    return 0;
-
-}
-
-int read_packet(int fd_r, int fd_w, pcap_file_header file_header){
-    pcap_pkthdr packet_header;
-    char packet_data[65536];
-    memset(&packet_data, 0, 65536);
+void write_packet(int interface_idx, const void* data, size_t len) {
+    struct pcap_pkthdr pph;
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    pph.ts_secs = tv.tv_sec;
+    pph.ts_usecs = tv.tv_usec;
+    pph.caplen = len;
+    pph.len = len;
 
     struct iovec iov[2];
-    iov[0].iov_base = &packet_header;
-    iov[0].iov_len = sizeof(packet_header);
-    iov[1].iov_base = &packet_data;
-    iov[1].iov_len = 65535;
-    ssize_t bytes_read = readv(fd_r, iov, 2);
-    if (bytes_read == 0) {
-        //printf("waiting for next packet...\n");
-        usleep(10000);
-        return 0;
-    } else if (bytes_read < 0) {
-        perror("readv");
-        return -1;
+    iov[0].iov_base = &pph;
+    iov[0].iov_len = sizeof(pph);
+    iov[1].iov_base = const_cast<void*>(data);
+    iov[1].iov_len = len;
+
+    if (writev(interfaces[interface_idx].fd_w,iov,2) != sizeof(pph) + len) {
+        perror("writev");
     }
-
-    if (file_is_big_endian) {
-        packet_header.ts_secs = swap32(packet_header.ts_secs);
-        packet_header.ts_usecs = swap32(packet_header.ts_usecs);
-        packet_header.caplen = swap32(packet_header.caplen);
-        packet_header.len = swap32(packet_header.len);
-    }
-
-    if (packet_header.caplen > 65535 || packet_header.caplen < 14) {
-        printf("Invalid caplen: %u\n", packet_header.caplen);
-        return 0;
-    }
-
-    if (packet_header.caplen < sizeof(eth_hdr)) {
-        std::cerr << "Packet too short for Ethernet\n";
-        return 0;
-    }
-
-    //print_timestamp(packet_header.ts_secs,packet_header.ts_usecs);
-
-    eth_hdr* eth = (eth_hdr*)packet_data;
-    uint16_t eth_type = ntohs(eth->type);
-
-    if (eth_type == 0x0800) {
-        if(debug)
-            printf("Ethernet Type: 0x%04x IPV4\n", eth_type);
-        if (debug) printf("Ethernet Type: 0x%04x IPv4\n", eth_type);
-        ipv4_hdr* ip = reinterpret_cast<ipv4_hdr*>(packet_data + 14);
-        uint8_t ip_header_len = (ip->version_ihl & 0b1111) * 4;        
-        // ICMP
-        if (ip->protocol == 1) {
-            icmp_hdr* icmp = reinterpret_cast<icmp_hdr*>((char*)ip + ip_header_len);
-            if(debug)
-                printf("ICMP type: %d code: %d\n", icmp->type, icmp->code);
-            if (icmp->type == 8) {
-                if(debug)
-                    printf("ICMP echo request received, sending reply...\n");
-                icmp_respond(fd_w,packet_header,packet_data); // icmp.h
-            }
-        }
-        // UDP
-        else if (ip->protocol == 17) {
-            udp_hdr* udp = reinterpret_cast<udp_hdr*>(packet_data + 14 + ip_header_len);
-            if(debug)
-                printf("UDP len: %d\n", udp->len);
-            if(udp->dport == 37){
-                printf("its time for time\n");
-                udp_time(fd_w,packet_header,packet_data); // udp.h
-            } else {
-                udp_respond(fd_w,packet_header,packet_data); // udp.h
-            }
-        }
-    } else if (eth_type == 0x0806){
-        arp_hdr* arp = reinterpret_cast<arp_hdr*>(packet_data + 14);
-        //cache_arp(arp);
-    } else {
-        if(debug)
-            printf("detected NOTHING IM USELESS\n");
-    }
-
-    if(debug)
-        printf("Packet len: %u\n",packet_header.caplen);
-    
-    return 0;
 }
 
-void process_packet(char* file) {
-    // File Descriptor Stuff
-    int fd_w = open(file, O_WRONLY | O_APPEND);
-    if (fd_w < 0) {
-        perror("open");
-        exit(1);
-    }
-    int fd_r = open(file,O_RDONLY);
-    if (fd_r < 0) {
-        perror("open");
-        exit(1);
-    }
+void process_packet(int interface_idx) {
+    pcap_pkthdr pph;
+    char packet[65536];
+    int ret = read(interfaces[interface_idx].fd_r,&pph,sizeof(pph));
+    if (ret <= 0 ) return;
+    if (ret < (int)sizeof(pph)) return;
 
-    // Meat and Potatoes
-    struct pcap_file_header file_header;
-    read_pcap_header(fd_r, file_header);
-    while(1){
-        int status = read_packet(fd_r, fd_w, file_header);
-        if (status == -1) {
-            printf("error reading packet: -1\n");
+    ret = read(interfaces[interface_idx].fd_r,packet,pph.caplen);
+    if (ret < (int)pph.caplen) return;
+
+    // splitting into structures
+    eth_hdr* eth = (eth_hdr*)packet;
+    if (memcmp(eth->src, interfaces[interface_idx].mac_addr, 6) == 0) return;
+        
+    if (ntohs(eth->type) != 0x0800) return; // not ipv4
+    ipv4_hdr* ip = (ipv4_hdr*)(packet + sizeof(eth_hdr));
+    uint8_t ip_hl = (ip->version_ihl & 0x0f) * 4;
+    uint16_t total_len = ntohs(ip->total_length);
+
+    // if dest is current interface
+    bool local = false;
+    for (int i = 0; i< num_interfaces; i++) {
+        if (ip->dest == interfaces[i].ipv4_addr) {
+            local = true;
             break;
         }
     }
-    close(fd_r);
-    close(fd_w);
+
+    // case dst is current index
+    if (local) {
+        // ICMP
+        if (ip->protocol == 1) {
+            icmp_hdr* icmp = (icmp_hdr*)((char*)ip + ip_hl);
+            if(icmp->type == 8) {
+                icmp_respond(interfaces[interface_idx].fd_w,pph,packet);
+            }
+        }
+
+        // UDP
+        else if (ip->protocol == 17) {
+            udp_hdr* udp = (udp_hdr*)((char*)ip + ip_hl);
+            if (ntohs(udp->dport) == 37) {
+                udp_time(interfaces[interface_idx].fd_w,pph,packet);
+            }
+            else if (ntohs(udp->dport) == 7) {
+                udp_respond(interfaces[interface_idx].fd_w,pph,packet);
+            } 
+            // else {
+            //     // process_rip(interfaces_idx,ip,udp,(char*)udp + sizeof(udp_hdr)
+            //     //             , total_len - ip_hl - sizeof(udp_hdr));
+            // }
+        }
+    } 
+    // case forwarding
+    else if (num_interfaces > 1) { 
+        ip->ttl--;
+        
+        if (ip->ttl == 0) {
+            if (debug) printf("UR DONE X_X\n");
+            return;
+        }
+        
+        int best_idx = -1;
+        uint32_t best_mask = 0;
+        for (int i = 0; i < routing_table.size(); i++) {
+            if ((ip->dest & routing_table[i].mask) == routing_table[i].dest_ip
+                && routing_table[i].mask >= best_mask) 
+            {
+                    best_idx = i;
+                    best_mask = routing_table[i].mask;
+            }
+                
+        }
+
+        if (best_idx == -1) {
+            if(debug) printf("No route to %s\n",ip_to_str(ip->dest).c_str());
+            return;
+        }
+
+        uint32_t next_hop = routing_table[best_idx].next_hop;
+        int out_iface = routing_table[best_idx].interface_idx;
+        memcpy(eth->src, interfaces[out_iface].mac_addr, 6);
+        uint8_t dst_mac[6];
+        ip_to_mac(next_hop ? next_hop : ip->dest, dst_mac);
+        memcpy(eth->dst, dst_mac, 6);
+        write_packet(out_iface,packet,pph.caplen);
+    }
+
 }

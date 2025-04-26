@@ -101,6 +101,9 @@ uint32_t calc_network(uint32_t ip, uint32_t mask_length) {
     return ip & mask;
 }
 
-uint64_t ip_to_mac(uint32_t ip) {
-    return (0x5efeULL << 32) | (ntohl(ip) & 0xffffffff);
+void ip_to_mac(uint32_t ip, uint8_t mac[6]) {
+    mac[0] = 0x5e;
+    mac[1] = 0xfe;
+    uint32_t ip_host = ntohl(ip);
+    memcpy(&mac[2], &ip_host, 4);
 }
