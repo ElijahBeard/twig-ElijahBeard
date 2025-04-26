@@ -198,6 +198,7 @@ void init_routing_table() {
 }
 
 void write_packet(int interface_idx, const void* data, size_t len) {
+    printf("Writing!\n");
     struct pcap_pkthdr pph;
     struct timeval tv;
     gettimeofday(&tv, NULL);
