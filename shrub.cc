@@ -18,7 +18,7 @@ void process_packet(int interface_idx) {
 
     // splitting into structures
     eth_hdr* eth = (eth_hdr*)packet;
-    if (memcmp(eth->src, interfaces[interface_idx].mac_addr, 6) == 0) return;
+    //if (memcmp(eth->src, interfaces[interface_idx].mac_addr, 6) == 0) return;
         
     if (ntohs(eth->type) != 0x0800) return; // not ipv4
     ipv4_hdr* ip = (ipv4_hdr*)(packet + sizeof(eth_hdr));
@@ -27,7 +27,7 @@ void process_packet(int interface_idx) {
 
     // if dest is current interface
     bool local = false;
-    for (int i = 0; i< num_interfaces; i++) {
+    for (int i = 0; i < num_interfaces; i++) {
         if (ip->dest == interfaces[i].ipv4_addr) {
             local = true;
             break;
@@ -85,13 +85,19 @@ void process_packet(int interface_idx) {
             return;
         }
 
-        uint32_t next_hop = routing_table[best_idx].next_hop;
         int out_iface = routing_table[best_idx].interface_idx;
+        uint32_t next_hop = routing_table[best_idx].next_hop;
         memcpy(eth->src, interfaces[out_iface].mac_addr, 6);
-        uint8_t dst_mac[6];
-        ip_to_mac(next_hop ? next_hop : ip->dest, dst_mac);
-        memcpy(eth->dst, dst_mac, 6);
-        write_packet(out_iface,packet,pph.caplen);
+        uint16_t cache_key = ntohs((next_hop ? next_hop : ip->dest) & 0xFFFF);
+        if (arp_cache.count(cache_key)) {
+            memcpy(eth->dst, arp_cache[cache_key], 6);
+        } else {
+            ip_to_mac(next_hop ? next_hop : ip->dest, eth->dst);
+        }
+        ip->checksum = 0;
+        ip->checksum = checksum(ip, ip_hl);
+        write_packet(out_iface, packet, pph.caplen);
+        if (debug) printf("Forwarded packet to %s via iface %d\n", ip_to_str(ip->dest).c_str(), out_iface);
     }
 
 }

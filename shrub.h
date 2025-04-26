@@ -34,6 +34,8 @@ struct route {
 };
 
 int debug = 0;
+
+std::unordered_map<uint16_t,uint8_t[6]> arp_cache;
 struct interface interfaces[10];
 int num_interfaces = 0;
 std::vector<route> routing_table;
