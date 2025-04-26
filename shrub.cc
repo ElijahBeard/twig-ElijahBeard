@@ -18,7 +18,7 @@ void process_packet(int interface_idx) {
         pph.caplen = swap32(pph.caplen);
         pph.len = swap32(pph.len);
     }
-    
+
     ret = read(interfaces[interface_idx].fd_r,packet,pph.caplen);
     if (ret < (int)pph.caplen) return;
 
@@ -139,6 +139,7 @@ int main(int argc, char* argv[]) {
         } else {
             for (int i = 0; i < num_interfaces; i++) {
                 if (FD_ISSET(interfaces[i].fd_r, &readfds)) {
+                    usleep(10000);
                     //if (debug) printf("im processing a damn packet yo\n");
                     process_packet(i);
                 }
