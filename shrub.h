@@ -138,6 +138,7 @@ void setup_interface(const char* interface_, int interface_idx) {
         exit(2);
     }
 
+    if(debug) printf("setup_interface: swapping endianess!\n");
     file_is_big_endian = (pfh.magic == PCAP_MAGIC);
     if (pfh.magic == swap32(PCAP_MAGIC)) {
         file_is_big_endian = false;

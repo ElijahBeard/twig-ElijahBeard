@@ -14,6 +14,9 @@ void process_packet(int interface_idx) {
     if (ret <= 0 ) return;
     if (ret < (int)sizeof(pph)) return;
 
+    if(debug) printf("just read %d bytes, processing...\n",ret);
+
+    if(debug) printf("Swapping Endianess!\n");
     if (file_is_big_endian) {
         pph.caplen = swap32(pph.caplen);
         pph.len = swap32(pph.len);
@@ -39,6 +42,7 @@ void process_packet(int interface_idx) {
     if (local) {
         // ICMP
         if (ip->protocol == 1) {
+            if(debug) printf("im ICMP!\n");
             icmp_hdr* icmp = (icmp_hdr*)(packet + sizeof(eth_hdr) + (ip->version_ihl & 0x0f) * 4);
             if(icmp->type == 8) {
                 icmp_respond(interface_idx,pph,packet);
@@ -47,14 +51,18 @@ void process_packet(int interface_idx) {
 
         // UDP
         else if (ip->protocol == 17) {
+            if(debug) printf("im UDP!\n");
             udp_hdr* udp = (udp_hdr*)(packet + sizeof(eth_hdr) + (ip->version_ihl & 0x0f) * 4);
             if (ntohs(udp->dport) == 7) {
+                if(debug) printf("im UDP RESPOND!\n");
                 udp_respond(interface_idx,&pph,packet);
             } 
             else if (ntohs(udp->dport) == 37) {
+                if(debug) printf("im UDP TIME!\n");
                 udp_time(interface_idx,&pph,packet);
             }
             else {
+                if(debug) printf("im RIP!\n");
                 process_rip(interface_idx, ip, udp, (char*)udp + sizeof(udp_hdr), 
                 pph.caplen - sizeof(eth_hdr) - (ip->version_ihl & 0x0f)*4 - sizeof(udp_hdr));
             }

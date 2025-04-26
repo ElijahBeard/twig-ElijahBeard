@@ -90,6 +90,7 @@ void udp_time(int interface_idx, const struct pcap_pkthdr* pph, const char* pack
     memcpy(eth.dst, i_eth->src, 6);
     memcpy(eth.src, interfaces[interface_idx].mac_addr, 6);
     eth.type = htons(0x0800);
+    printf("Insert eth buffer\n");
     buffer.insert(buffer.end(), (uint8_t*)&eth, (uint8_t*)&eth + sizeof(eth));
 
     // ip protocol
@@ -105,6 +106,7 @@ void udp_time(int interface_idx, const struct pcap_pkthdr* pph, const char* pack
     ip.src = interfaces[interface_idx].ipv4_addr;
     ip.dest = i_ip->src;
     ip.checksum = checksum(&ip,(ip.version_ihl & 0x0f) * 4);
+    printf("Insert ip buffer\n");
     buffer.insert(buffer.end(), (uint8_t*)&ip, (uint8_t*)&ip + sizeof(ip));
 
     // udp hdr
@@ -113,13 +115,15 @@ void udp_time(int interface_idx, const struct pcap_pkthdr* pph, const char* pack
     udp.dport = i_udp->sport;
     udp.len = htons(sizeof(struct udp_hdr) + udp_payload_len);
     udp.checksum = 0;
+    printf("Insert udp buffer\n");
     buffer.insert(buffer.end(), (uint8_t*)&udp, (uint8_t*)&udp + sizeof(udp));
 
     const uint32_t epoch_offset = 2208988800U;
     struct timeval now;
     gettimeofday(&now, NULL);
     uint32_t time_protocol = htonl(static_cast<uint32_t>(now.tv_sec) + epoch_offset);
+    printf("Insert time buffer\n");
     buffer.insert(buffer.end(), (uint8_t*)&time_protocol, (uint8_t*)&time_protocol + 4);
-
+    
     write_packet(interface_idx, buffer.data(), buffer.size());
 };
