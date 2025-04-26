@@ -13,13 +13,12 @@ void process_packet(int interface_idx) {
     int ret = read(interfaces[interface_idx].fd_r,&pph,sizeof(pph));
     if (ret <= 0 ) return;
     if (ret < (int)sizeof(pph)) return;
-    
-    if (pph.caplen > sizeof(packet)) {
-        if (debug) printf("Dropping oversized packet (%u > %zu)\n", pph.caplen, sizeof(packet));
-        lseek(interfaces[interface_idx].fd_r, pph.caplen, SEEK_CUR); // Skip corrupt packet
-        return;
-    }
 
+    if (file_is_big_endian) {
+        pph.caplen = swap32(pph.caplen);
+        pph.len = swap32(pph.len);
+    }
+    
     ret = read(interfaces[interface_idx].fd_r,packet,pph.caplen);
     if (ret < (int)pph.caplen) return;
 

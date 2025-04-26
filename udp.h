@@ -36,10 +36,6 @@ uint16_t udp_checksum(pcap_pkthdr packet_header, ipv4_hdr *ip_response, udp_hdr 
 }
 
 void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* packet) {
-    if (pph->caplen < sizeof(struct eth_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr)) {
-        if (debug) printf("Packet too small for UDP response\n");
-        return;
-    }
 
     const struct eth_hdr* i_eth = (const struct eth_hdr*)packet;
     const struct ipv4_hdr* i_ip = (const struct ipv4_hdr*)(packet + sizeof(struct eth_hdr));

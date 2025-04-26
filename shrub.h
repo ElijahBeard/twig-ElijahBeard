@@ -137,7 +137,12 @@ void setup_interface(const char* interface_, int interface_idx) {
         perror("invalid pcap magic\n");
         exit(2);
     }
-    file_is_big_endian = (pfh.magic == swap32(PCAP_MAGIC));
+
+    file_is_big_endian = (pfh.magic == PCAP_MAGIC);
+    if (pfh.magic == swap32(PCAP_MAGIC)) {
+        file_is_big_endian = false;
+        pfh.snaplen = swap32(pfh.snaplen);
+    }
 
     interfaces[interface_idx].ipv4_addr = ip;
     interfaces[interface_idx].mask_length = mask_length;
