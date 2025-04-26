@@ -37,7 +37,6 @@ void icmp_respond(int interface_idx, const pcap_pkthdr& pph, const char* packet)
     icmp.checksum = 0;
     buffer.insert(buffer.end(), (uint8_t*)&icmp, (uint8_t*)&icmp + sizeof(icmp));
 
-    size_t icmp_payload_len = pph.caplen - (sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4 + sizeof(struct icmp_hdr));
     buffer.insert(buffer.end(), packet + sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4 + sizeof(struct icmp_hdr),
                   packet + pph.caplen);
 
