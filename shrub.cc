@@ -18,8 +18,8 @@ void process_packet(int interface_idx) {
 
     if (file_is_big_endian) {
         if(debug) printf("Swapping Endianess!\n");
-        pph.caplen = swap32(pph.caplen);
-        pph.len = swap32(pph.len);
+        pph.caplen = ntohl(pph.caplen);
+        pph.len = ntohl(pph.len);
     }
     ret = read(interfaces[interface_idx].fd_r,packet,pph.caplen);
     if (ret < (int)pph.caplen) return;
