@@ -38,6 +38,7 @@ void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* p
     const struct eth_hdr* i_eth = (const struct eth_hdr*)packet;
     const struct ipv4_hdr* i_ip = (const struct ipv4_hdr*)(packet + sizeof(struct eth_hdr));
     const struct udp_hdr* i_udp = (const struct udp_hdr*)(packet+sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4);
+    size_t udp_payload_len = pph->caplen - sizeof(struct eth_hdr) - (i_ip->version_ihl & 0x0f)*4 - sizeof(struct udp_hdr);
 
     // response packet
     std::vector<uint8_t> buffer;
@@ -56,6 +57,7 @@ void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* p
     ip.ttl = 255;
     ip.checksum = 0;
     ip.checksum = checksum(&ip,(ip.version_ihl & 0x0f) * 4);
+    ip.total_length = htons(sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr) + udp_payload_len);
     buffer.insert(buffer.end(),(uint8_t*)&ip,(uint8_t*)&ip + sizeof(ip));
 
     // udp swap
@@ -65,9 +67,8 @@ void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* p
     udp.dport = tmp;
     udp.checksum = 0;
     udp.checksum = udp_checksum(*pph,&ip,&udp); // if doesnt work try i_ variants
-
     // insert udp to buffer
-    size_t udp_payload_len = pph->caplen - sizeof(struct eth_hdr) - (i_ip->version_ihl & 0x0f)*4 - sizeof(struct udp_hdr);
+    udp.len = htons(sizeof(struct udp_hdr) + udp_payload_len);  // Total UDP header + payload
     buffer.insert(buffer.end(), packet + sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4 + sizeof(struct udp_hdr),
                   packet + sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4 + sizeof(struct udp_hdr) + udp_payload_len);
 
