@@ -45,31 +45,42 @@ void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* p
     const struct ipv4_hdr* i_ip = (const struct ipv4_hdr*)(packet + sizeof(struct eth_hdr));
     
     uint8_t ip_header_len = (i_ip->version_ihl & 0x0f) * 4;
-    if (pph->caplen < sizeof(struct eth_hdr) + ip_header_len + sizeof(struct udp_hdr)) {
-        if (debug) printf("Invalid IP header length\n");
+    if (ip_header_len < sizeof(struct ipv4_hdr) || 
+        pph->caplen < sizeof(struct eth_hdr) + ip_header_len + sizeof(struct udp_hdr)) {
+        if (debug) printf("Invalid IP header\n");
         return;
     }
 
     const struct udp_hdr* i_udp = (const struct udp_hdr*)(packet + sizeof(struct eth_hdr) + ip_header_len);
-    size_t udp_payload_len = ntohs(i_udp->len) - sizeof(struct udp_hdr);
+    
+    size_t udp_total_len = ntohs(i_udp->len);
+    if (udp_total_len < sizeof(struct udp_hdr)) {
+        if (debug) printf("Invalid UDP length: %zu\n", udp_total_len);
+        return;
+    }
+    
+    size_t udp_payload_len = udp_total_len - sizeof(struct udp_hdr);
     size_t max_possible_len = pph->caplen - sizeof(struct eth_hdr) - ip_header_len - sizeof(struct udp_hdr);
     
     if (udp_payload_len > max_possible_len) {
-        if (debug) printf("Truncating UDP payload from %zu to %zu bytes\n", udp_payload_len, max_possible_len);
+        if (debug) printf("Truncating payload from %zu to %zu\n", udp_payload_len, max_possible_len);
         udp_payload_len = max_possible_len;
     }
 
     std::vector<uint8_t> buffer;
-    //buffer.reserve(sizeof(struct eth_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr) + udp_payload_len);
+    try {
+        buffer.reserve(sizeof(struct eth_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr) + udp_payload_len);
+    } catch (const std::bad_alloc&) {
+        if (debug) printf("Failed to allocate buffer\n");
+        return;
+    }
 
-    // Ethernet header
     struct eth_hdr eth;
     memcpy(eth.dst, i_eth->src, 6);
     memcpy(eth.src, interfaces[interface_idx].mac_addr, 6);
     eth.type = htons(0x0800);
     buffer.insert(buffer.end(), (uint8_t*)&eth, (uint8_t*)&eth + sizeof(eth));
 
-    // IP header
     struct ipv4_hdr ip;
     ip.version_ihl = 0x45;
     ip.tos = 0;
@@ -84,7 +95,6 @@ void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* p
     ip.checksum = checksum(&ip, sizeof(ip));
     buffer.insert(buffer.end(), (uint8_t*)&ip, (uint8_t*)&ip + sizeof(ip));
 
-    // UDP header
     struct udp_hdr udp;
     udp.sport = i_udp->dport;
     udp.dport = i_udp->sport;
@@ -98,7 +108,6 @@ void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* p
     }
     write_packet(interface_idx, buffer.data(), buffer.size());
 }
-
 void udp_time(int interface_idx, const struct pcap_pkthdr* pph, const char* packet){
     const struct eth_hdr* i_eth = (const struct eth_hdr*)packet;
     const struct ipv4_hdr* i_ip = (const struct ipv4_hdr*)(packet + sizeof(struct eth_hdr));
