@@ -60,7 +60,7 @@ void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* p
     }
 
     std::vector<uint8_t> buffer;
-    buffer.reserve(sizeof(struct eth_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr) + udp_payload_len);
+    //buffer.reserve(sizeof(struct eth_hdr) + sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr) + udp_payload_len);
 
     // Ethernet header
     struct eth_hdr eth;
