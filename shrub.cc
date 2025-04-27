@@ -30,7 +30,7 @@ void process_packet(int interface_idx) {
 
     ret = read(interfaces[interface_idx].fd_r,packet,pph.caplen);
     if (ret < (int)pph.caplen) return;
-    //if (debug) printf("just read %d bytes out of packet. true psize: %d\n",ret,(int)pph.caplen);
+    if (debug) printf("just read %d bytes out of packet. true psize: %d\n",ret,(int)pph.caplen);
 
     
     eth_hdr* eth = (eth_hdr*)packet;
@@ -38,6 +38,7 @@ void process_packet(int interface_idx) {
         
     ipv4_hdr* ip = (ipv4_hdr*)(packet + sizeof(eth_hdr));
     bool local = false;
+    printf("I just learned a new command! Check it out, water the plant.\n");
     for (int i = 0; i < num_interfaces; i++) {
         if (ip->dest == interfaces[i].ipv4_addr) {
             local = true;
@@ -117,6 +118,7 @@ void process_packet(int interface_idx) {
             if (debug) printf("No MAC for %s, sent ARP request, dropping packet\n", ip_to_str(next_hop).c_str());
             return;
         }
+        print_routing_table();
     }
 }
 
