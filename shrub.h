@@ -157,8 +157,8 @@ void setup_interface(const char* interface_, int interface_idx) {
     }
 
 
-    int fd_r = open(filename,O_RDONLY);
-    int fd_w = open(filename, O_WRONLY | O_APPEND);
+    int fd_r = open(filename,O_RDONLY, 0644);
+    int fd_w = open(filename, O_WRONLY | O_APPEND, 0644);
     if (fd_r < 0 || fd_w < 0) {
         perror("open");
         exit(1);
