@@ -38,7 +38,6 @@ void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* p
     const struct eth_hdr* i_eth = (const struct eth_hdr*)packet;
     const struct ipv4_hdr* i_ip = (const struct ipv4_hdr*)(packet + sizeof(struct eth_hdr));
     const struct udp_hdr* i_udp = (const struct udp_hdr*)(packet+sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4);
-    size_t udp_payload_len = pph->caplen - sizeof(struct eth_hdr) - (i_ip->version_ihl & 0x0f)*4 - sizeof(struct udp_hdr);
 
     // response packet
     std::vector<uint8_t> buffer;
