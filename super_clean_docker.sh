@@ -4,3 +4,4 @@ sudo docker network remove twignet
 sudo ip route del 172.31.0.0/16 2>/dev/null || true
 sudo pkill -f ./shrub
 sudo rm ../Twig_tools/*.dmp
+sudo ../Twig_tools/cleandocker.sh
