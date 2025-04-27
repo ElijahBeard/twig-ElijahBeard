@@ -19,7 +19,7 @@ void process_packet(int interface_idx) {
     int ret = read(interfaces[interface_idx].fd_r,&pph,sizeof(pph));
     if (ret <= 0 ) return;
     if (ret < (int)sizeof(pph)) return;
-
+    if (pph.caplen > sizeof(packet)) {if(debug) printf("packets' too damn big\n");}
     //if(debug) printf("just read %d bytes out of pph. true psize: %d processing...\n",ret,(int)sizeof(pph));
 
     if (file_is_big_endian) {
@@ -37,9 +37,11 @@ void process_packet(int interface_idx) {
     ret = read(interfaces[interface_idx].fd_r,packet,pph.caplen);
     if (ret < (int)pph.caplen) return;
     if (debug) printf("just read %d bytes out of packet. true psize: %d\n",ret,(int)pph.caplen);
+    if (pph.caplen < sizeof(eth_hdr)) {if(debug) printf("packets' too damn small for ether\n");}
 
     
     eth_hdr* eth = (eth_hdr*)packet;
+    if (!eth) {if(debug) printf("Null eth_hdr on iface %d\n",interface_idx);}
     if(ntohs(eth->type) == 0x0806) {
         process_arp(interface_idx,pph,packet);
         return;
