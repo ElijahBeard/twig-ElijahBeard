@@ -14,6 +14,7 @@
 #include <arpa/inet.h>
 #include <sys/uio.h>
 #include <array>
+#include <sys/wait.h>
 
 #include "utils.h"
 #include "pheaders.h"
