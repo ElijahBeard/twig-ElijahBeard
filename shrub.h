@@ -136,7 +136,12 @@ void setup_interface(const char* interface_, int interface_idx) {
     if(debug) printf("%s_%u.dmp",ip_to_str(network).c_str(),mask_length);
 
     struct stat st;
-    if(stat(filename, &st) != 0) {
+    if(stat(filename,&st) == 0) {
+        if (access(filename, R_OK | W_OK) != 0) {
+            fprintf(stderr, "File %s exists but is not accessible: %s\n", filename, strerror(errno));
+            exit(1);
+        }
+    } else {
         int fd = open(filename,O_CREAT | O_WRONLY, 0644);
         if (fd < 0) {
             perror("open\n");
@@ -149,7 +154,6 @@ void setup_interface(const char* interface_, int interface_idx) {
         }
     }
 
-
     if (debug) {
         //printf("\nfilename: %s\n", filename);
         printf("ip: %s\n", ip_str.c_str());
@@ -157,8 +161,8 @@ void setup_interface(const char* interface_, int interface_idx) {
     }
 
 
-    int fd_r = open(filename,O_RDONLY, 0644);
-    int fd_w = open(filename, O_WRONLY | O_APPEND, 0644);
+    int fd_r = open(filename,O_RDONLY);
+    int fd_w = open(filename, O_WRONLY | O_APPEND);
     if (fd_r < 0 || fd_w < 0) {
         perror("open");
         exit(1);
@@ -206,7 +210,7 @@ void print_routing_table() {
     for (const auto& entry : routing_table) {
         printf("Dest: %s/%d, Next Hop: %s, Metric: %d, Iface: %d\n",
                ip_to_str(entry.dest_ip).c_str(),
-               __builtin_popcount(entry.mask),
+               32 - __builtin_clz(entry.mask),
                entry.next_hop ? ip_to_str(entry.next_hop).c_str() : "Direct",
                entry.metric, entry.interface_idx);
     }
@@ -215,8 +219,9 @@ void print_routing_table() {
 
 void init_routing_table() {
     for (int i = 0; i < num_interfaces; i++) {
-        uint32_t network = calc_network(interfaces[i].ipv4_addr,interfaces[i].mask_length);
-        routing_table.push_back({network, interfaces[i].mask_length, 0, 0, i});
+        uint32_t mask = (0xffffffff << (32 - interfaces[i].mask_length)) & 0xffffffff;
+        uint32_t network = calc_network(interfaces[i].ipv4_addr, mask);
+        routing_table.push_back({network, mask, 0, 0, i});
         if (debug) {
             printf("Added route for iface %d: %s/%d\n", i,
                    ip_to_str(network).c_str(), interfaces[i].mask_length);
@@ -227,7 +232,14 @@ void init_routing_table() {
             fprintf(stderr, "--default-route only for routers\n");
             exit(1);
         }
-        uint32_t next_hop = str_to_ip(default_route.c_str());
+
+        std::string clean_default_route = default_route;
+        size_t pos = clean_default_route.find('_');
+        if (pos != std::string::npos) {
+            clean_default_route = clean_default_route.substr(0, pos);
+        }
+
+        uint32_t next_hop = str_to_ip(clean_default_route.c_str());
         int iface_idx = -1;
         for (int i = 0; i < num_interfaces; i++) {
             uint32_t mask = (0xffffffff << (32 - interfaces[i].mask_length)) & 0xffffffff;

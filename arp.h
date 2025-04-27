@@ -13,16 +13,16 @@
 
 #include "shrub.h" // for globals
 
-// void print_arp_cache() {
-//     printf("ARP Cache:\n");
-//     for (const auto& entry : arp_cache) {
-//         uint32_t ip = entry.first;
-//         const uint8_t* mac = entry.second;
-//         printf("  IP: %s -> MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
-//                ip_to_str(ip).c_str(),
-//                mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-//     }
-// }
+void print_arp_cache() {
+    printf("ARP Cache:\n");
+    for (const auto& entry : arp_cache) {
+        uint32_t ip = entry.first;
+        const uint8_t* mac = entry.second.data();
+        printf("  IP: %s -> MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
+               ip_to_str(ip).c_str(),
+               mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    }
+}
 
 void arp_respond(int interface_idx, const arp_hdr* req_arp) {
     std::vector<uint8_t> buffer;
@@ -76,7 +76,7 @@ void process_arp(int interface_idx, const pcap_pkthdr& pph, const char *packet) 
     // case reply
     else if (ntohs(arp->op == 2)) {
         if (debug) printf("arp recieved reply ip %s\n",ip_to_str(target_ip).c_str());
-        //if (debug) print_arp_cache();
+        if (debug) print_arp_cache();
     }
 }
 
