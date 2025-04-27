@@ -14,7 +14,7 @@ void process_packet(int interface_idx) {
     if (ret <= 0 ) return;
     if (ret < (int)sizeof(pph)) return;
 
-    if(debug) printf("just read %d bytes out of pph. true psize: %d processing...\n",ret,(int)sizeof(pph));
+    //if(debug) printf("just read %d bytes out of pph. true psize: %d processing...\n",ret,(int)sizeof(pph));
 
     if (file_is_big_endian) {
         pph.ts_secs = swap32(pph.ts_secs);
@@ -30,7 +30,7 @@ void process_packet(int interface_idx) {
 
     ret = read(interfaces[interface_idx].fd_r,packet,pph.caplen);
     if (ret < (int)pph.caplen) return;
-    if (debug) printf("just read %d bytes out of packet. true psize: %d\n",ret,(int)pph.caplen);
+    //if (debug) printf("just read %d bytes out of packet. true psize: %d\n",ret,(int)pph.caplen);
 
     
     eth_hdr* eth = (eth_hdr*)packet;
@@ -41,9 +41,11 @@ void process_packet(int interface_idx) {
     for (int i = 0; i < num_interfaces; i++) {
         if (ip->dest == interfaces[i].ipv4_addr) {
             local = true;
+            if(debug) printf("Im local ho!\n");
             break;
         }
     }
+    if(debug){if(local) printf("Im not local ho\n");}
 
     // case dst is current index
     if (local) {
