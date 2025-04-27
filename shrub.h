@@ -129,11 +129,11 @@ void setup_interface(const char* interface_, int interface_idx) {
     std::string mask_str = arg.substr(pos + 1);
     uint32_t ip = str_to_ip(ip_str.c_str());
     uint32_t mask_length = atoi(mask_str.c_str());
-    uint32_t mask = (~0U) << (32 - mask_length);
-    uint32_t network = ip & mask;
+    uint32_t network = calc_network(ip,mask_length);
 
     char filename[64];
     snprintf(filename,sizeof(filename),"%s_%u.dmp",ip_to_str(network).c_str(), mask_length);
+    if(debug) printf("%s_%u.dmp",ip_to_str(network).c_str(),mask_length);
 
     struct stat st;
     if(stat(filename, &st) != 0) {
