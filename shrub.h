@@ -45,6 +45,10 @@ std::string default_route;
 bool file_is_big_endian = false;
 #define PCAP_MAGIC 0xa1b2c3d4
 
+const uint32_t rip_multicast_addr = 0xE0000009;
+const uint16_t rip_port = 520;
+const uint32_t rip_cost_infinity = 16;
+
 // prints help lol
 void print_help(){
     printf("Usage: ./shrub [options]\n");
@@ -55,6 +59,23 @@ void print_help(){
     printf("  -r SECONDS RIP update interval\n");
     printf("  -h Print this help\n");
     exit(0);
+}
+
+int write_pcap_file_header(const char* filename) {
+    pid_t pid = fork();
+    if(pid == 0) {
+        if (debug) printf("Writing pcap file header for %s",filename);
+        execl("./make_pcap.sh","make_pcap.sh",filename,(char*)nullptr);
+        perror("excel");
+        _exit(1);
+    } else if (pid > 0) {
+        int status;
+        waitpid(pid, &status, 0);
+        return WEXITSTATUS(status);
+    } else {
+        perror("fork");
+        return -1;
+    }
 }
 
 // handles -i input converts to structs for interfaces vector
@@ -106,54 +127,36 @@ void setup_interface(const char* interface_, int interface_idx) {
     std::string mask_str = arg.substr(pos + 1);
     uint32_t ip = str_to_ip(ip_str.c_str());
     uint32_t mask_length = atoi(mask_str.c_str());
+    uint32_t mask = (~0U) << (32 - mask_length);
+    uint32_t network = ip & mask;
 
-    uint32_t network = calc_network(ip, mask_length);
-    std::string filename = ip_to_str(network) + "_" + mask_str + ".dmp";
+    char filename[64];
+    snprintf(filename,sizeof(filename),"%s_%u.dmp",ip_to_str(network).c_str(), mask_length);
 
-    if (debug) {
-        printf("\nfilename: %s\n", filename.c_str());
-        printf("ip: %s\n", ip_str.c_str());
-        printf("mask: %s\n\n", mask_str.c_str());
-    }
-
-    if (access(filename.c_str(), F_OK) != 0) {
-        if (debug) printf("Creating pcap file: %s\n", filename.c_str());
-        struct pcap_file_header pfh;
-        bool is_little_endian = (htonl(1) != 1);
-        if (is_little_endian) {
-            pfh.magic = 0xd4c3b2a1;  // might be wrong
-            pfh.version_major = 0x0200;
-            pfh.version_minor = 0x0400;
-            pfh.thiszone = 0x00000000;
-            pfh.sigfigs = 0x00000000;
-            pfh.snaplen = 0x00002710; 
-            pfh.linktype = 0x00000001;
-            file_is_big_endian = false;
-        } else {
-            pfh.magic = 0xa1b2c3d4; // might be wrong
-            pfh.version_major = 0x0002;
-            pfh.version_minor = 0x0004;
-            pfh.thiszone = 0x00000000;
-            pfh.sigfigs = 0x00000000;
-            pfh.snaplen = 0x00002710;
-            pfh.linktype = 0x00000001;
-            file_is_big_endian = true;
-        }
-        int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    struct stat st;
+    if(stat(filename, &st) != 0) {
+        int fd = open(filename,O_CREAT | O_WRONLY, 0644);
         if (fd < 0) {
-            perror("create pcap file");
-            exit(1);
-        }
-        if (write(fd, &pfh, sizeof(pfh)) != sizeof(pfh)) {
-            perror("write pcap header");
-            close(fd);
+            perror("open\n");
             exit(1);
         }
         close(fd);
+        if (write_pcap_file_header(filename) != 0) {
+            printf("write fail pcap header for %s\n",filename);
+            exit(1);
+        }
     }
 
-    int fd_r = open(filename.c_str(),O_RDONLY);
-    int fd_w = open(filename.c_str(), O_WRONLY | O_APPEND);
+
+    if (debug) {
+        //printf("\nfilename: %s\n", filename);
+        printf("ip: %s\n", ip_str.c_str());
+        //printf("mask: %s\n\n", mask_str.c_str());
+    }
+
+
+    int fd_r = open(filename,O_RDONLY);
+    int fd_w = open(filename, O_WRONLY | O_APPEND);
     if (fd_r < 0 || fd_w < 0) {
         perror("open");
         exit(1);
@@ -187,6 +190,11 @@ void setup_interface(const char* interface_, int interface_idx) {
     ip_to_mac(ip, interfaces[interface_idx].mac_addr);
     interfaces[interface_idx].fd_r = fd_r;
     interfaces[interface_idx].fd_w = fd_w;
+
+    uint8_t* mac = interfaces[interface_idx].mac_addr;
+    mac[0] = 0x5E;
+    mac[1] = 0xFE;
+    memcpy(mac + 2, &ip,4);
 }
 
 // prints routing table lol
