@@ -17,14 +17,20 @@ void process_packet(int interface_idx) {
     if(debug) printf("just read %d bytes out of pph. true psize: %d processing...\n",ret,(int)sizeof(pph));
 
     if (file_is_big_endian) {
-        if(debug) printf("Swapping Endianess!\n");
-        pph.caplen = ntohl(pph.caplen);
-        pph.len = ntohl(pph.len);
+        pph.ts_secs = swap32(pph.ts_secs);
+        pph.ts_usecs = swap32(pph.ts_usecs);
+        pph.caplen = swap32(pph.caplen);
+        pph.len = swap32(pph.len);
     }
-    printf("im abt to read yo\n");
+
+    if (pph.caplen > 65535 || pph.caplen < 14) {
+        printf("Invalid caplen: %u\n", pph.caplen);
+        exit(999);
+    }
+
     ret = read(interfaces[interface_idx].fd_r,packet,pph.caplen);
     if (ret < (int)pph.caplen) return;
-    printf("just read %d bytes out of packet. true psize: %d\n",ret,(int)pph.caplen);
+    if (debug) printf("just read %d bytes out of packet. true psize: %d\n",ret,(int)pph.caplen);
 
     
     eth_hdr* eth = (eth_hdr*)packet;
@@ -63,7 +69,7 @@ void process_packet(int interface_idx) {
                 udp_time(interface_idx,&pph,packet);
             }
             else {
-                if(debug) printf("im RIP!\n");
+                if(debug) printf("im RIP! :D\n");
                 process_rip(interface_idx, ip, udp, (char*)udp + sizeof(udp_hdr), 
                 pph.caplen - sizeof(eth_hdr) - (ip->version_ihl & 0x0f)*4 - sizeof(udp_hdr));
             }

@@ -133,16 +133,22 @@ void setup_interface(const char* interface_, int interface_idx) {
         perror("read pcap header\n");
         exit(1);
     }
-    if (pfh.magic != PCAP_MAGIC && pfh.magic != swap32(PCAP_MAGIC)) {
-        perror("invalid pcap magic\n");
-        exit(2);
-    }
 
     if(debug) printf("setup_interface: swapping endianess!\n");
-    file_is_big_endian = (pfh.magic == PCAP_MAGIC);
-    if (pfh.magic == swap32(PCAP_MAGIC)) {
+
+    if (pfh.magic == PCAP_MAGIC) {  // 0xa1b2c3d4 
         file_is_big_endian = false;
+    } else if (pfh.magic == swap32(PCAP_MAGIC)) {  
+        file_is_big_endian = true;
+        pfh.version_major = swap16(pfh.version_major);
+        pfh.version_minor = swap16(pfh.version_minor);
+        pfh.thiszone = swap32(pfh.thiszone);
+        pfh.sigfigs = swap32(pfh.sigfigs);
         pfh.snaplen = swap32(pfh.snaplen);
+        pfh.linktype = swap32(pfh.linktype);
+    } else {
+        fprintf(stderr, "invalid magic number: 0x%08x\n", pfh.magic);
+        exit(1);
     }
 
     interfaces[interface_idx].ipv4_addr = ip;
