@@ -23,16 +23,16 @@ Structure
 # TODO 
 - [x] parse_input(int argc, char* argv[])
 - [x] interfaces init
-- [x] interfaces loop
+- [_] interfaces loop
 - [x] correctly read packet
 - [x] correctly write packet
 - [x] routing tables init
-- [/] utilize routing tables
+- [_] utilize routing tables
 - [x] icmp
 - [x] udp "open issue"
 - [x] udp time "open issue"
 - [x] udp ping "open issue"
 - [x] rip
-- [x] arp
+- [/] arp
 - [_] CHAIN working
 - [_] BOWTIE working
