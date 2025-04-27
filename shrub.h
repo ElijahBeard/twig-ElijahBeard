@@ -73,6 +73,7 @@ std::vector<std::string> parse_interfaces(int argc, char* argv[]){
         }
         if(strcmp(argv[i], "-d") == 0) {
             debug++;
+            printf("im debugging ^^\n");
         }
         if(strcmp(argv[i], "-r") == 0) {
             i++;
