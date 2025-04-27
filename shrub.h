@@ -220,7 +220,7 @@ void print_routing_table() {
 void init_routing_table() {
     for (int i = 0; i < num_interfaces; i++) {
         uint32_t mask = (0xffffffff << (32 - interfaces[i].mask_length)) & 0xffffffff;
-        uint32_t network = calc_network(interfaces[i].ipv4_addr, mask);
+        uint32_t network = calc_network(interfaces[i].ipv4_addr, interfaces[i].mask_length);
         routing_table.push_back({network, mask, 0, 0, i});
         if (debug) {
             printf("Added route for iface %d: %s/%d\n", i,
@@ -243,7 +243,7 @@ void init_routing_table() {
         int iface_idx = -1;
         for (int i = 0; i < num_interfaces; i++) {
             uint32_t mask = (0xffffffff << (32 - interfaces[i].mask_length)) & 0xffffffff;
-            uint32_t network = calc_network(interfaces[i].ipv4_addr, mask);
+            uint32_t network = calc_network(interfaces[i].ipv4_addr, interfaces[i].mask_length);
             if ((next_hop & mask) == network) {
                 iface_idx = i;
                 break;

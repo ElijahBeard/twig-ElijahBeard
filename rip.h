@@ -58,7 +58,8 @@ void send_rip_response(int interface_idx, uint32_t dest) {
         entry.metric = htonl(route.next_hop == dest ? rip_cost_infinity : route.metric);
         buffer.insert(buffer.end(), (uint8_t*)&entry, (uint8_t*)&entry + sizeof(entry));
     }
-
+    if (debug) printf("Sending RIP response on iface %d to %s\n",
+        interface_idx, ip_to_str(dest).c_str());
     write_packet(interface_idx,buffer.data(),buffer.size());
 }
 
@@ -66,6 +67,8 @@ void process_rip(int interface_idx, ipv4_hdr* ip, udp_hdr* udp, const char* data
     if (len < sizeof(rip_hdr)) return;
     rip_hdr* rip = (rip_hdr*)data;
     if(rip->version != 2 || rip->zero != 0 ) return;
+    if (debug) printf("Received RIP packet on iface %d, command %d\n",
+        interface_idx, rip->command);
 
     if(rip->command == 1) {
         size_t num_entries = (len - sizeof(rip_hdr)) / sizeof(rip_entry);
