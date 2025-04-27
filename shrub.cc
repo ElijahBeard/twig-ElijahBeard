@@ -38,7 +38,7 @@ void process_packet(int interface_idx) {
         
     ipv4_hdr* ip = (ipv4_hdr*)(packet + sizeof(eth_hdr));
     bool local = false;
-    printf("I just learned a new command! Check it out, water the plant.\n");
+
     for (int i = 0; i < num_interfaces; i++) {
         if (ip->dest == interfaces[i].ipv4_addr) {
             local = true;
@@ -46,7 +46,7 @@ void process_packet(int interface_idx) {
             break;
         }
     }
-    if(debug){if(local) printf("Im not local ho\n");}
+    if(debug){if(!local) printf("Im not local ho\n");}
 
     // case dst is current index
     if (local) {

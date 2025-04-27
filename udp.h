@@ -57,7 +57,7 @@ void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* p
     ip.ttl = 255;
     ip.checksum = 0;
     ip.checksum = checksum(&ip,(ip.version_ihl & 0x0f) * 4);
-    ip.total_length = htons(sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr) + udp_payload_len);
+    ip.total_length = htons(sizeof(struct ipv4_hdr) + sizeof(struct udp_hdr) + 4);
     buffer.insert(buffer.end(),(uint8_t*)&ip,(uint8_t*)&ip + sizeof(ip));
 
     // udp swap
@@ -68,7 +68,7 @@ void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* p
     udp.checksum = 0;
     //udp.checksum = udp_checksum(*pph,&ip,&udp); // if doesnt work try i_ variants
     // insert udp to buffer
-    udp.len = htons(sizeof(struct udp_hdr) + udp_payload_len);
+    udp.len = htons(sizeof(struct udp_hdr) + 4);
     buffer.insert(buffer.end(), packet + sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4 + sizeof(struct udp_hdr),
                   packet + sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4 + sizeof(struct udp_hdr) + udp_payload_len);
 
@@ -80,7 +80,6 @@ void udp_time(int interface_idx, const struct pcap_pkthdr* pph, const char* pack
     const struct eth_hdr* i_eth = (const struct eth_hdr*)packet;
     const struct ipv4_hdr* i_ip = (const struct ipv4_hdr*)(packet + sizeof(struct eth_hdr));
     const struct udp_hdr* i_udp = (const struct udp_hdr*)(packet+sizeof(struct eth_hdr) + (i_ip->version_ihl & 0x0f) * 4);
-    size_t udp_payload_len = pph->caplen - sizeof(struct eth_hdr) - (i_ip->version_ihl & 0x0f)*4 - sizeof(struct udp_hdr);
 
     // response packet
     printf("Init buffer\n");
@@ -113,7 +112,7 @@ void udp_time(int interface_idx, const struct pcap_pkthdr* pph, const char* pack
     struct udp_hdr udp;
     udp.sport = htons(37);
     udp.dport = i_udp->sport;
-    udp.len = htons(sizeof(struct udp_hdr) + udp_payload_len);
+    udp.len = htons(sizeof(struct udp_hdr) + 4);
     udp.checksum = 0;
     printf("Insert udp buffer\n");
     buffer.insert(buffer.end(), (uint8_t*)&udp, (uint8_t*)&udp + sizeof(udp));
@@ -124,6 +123,10 @@ void udp_time(int interface_idx, const struct pcap_pkthdr* pph, const char* pack
     uint32_t time_protocol = htonl(static_cast<uint32_t>(now.tv_sec) + epoch_offset);
     printf("Insert time buffer\n");
     buffer.insert(buffer.end(), (uint8_t*)&time_protocol, (uint8_t*)&time_protocol + 4);
-    
+
+    if (debug) {
+        printf("TIME: timestamp=0x%08x\n", ntohl(time_protocol));
+    }
+
     write_packet(interface_idx, buffer.data(), buffer.size());
 };
