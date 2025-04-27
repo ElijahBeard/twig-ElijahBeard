@@ -116,10 +116,40 @@ void setup_interface(const char* interface_, int interface_idx) {
         printf("mask: %s\n\n", mask_str.c_str());
     }
 
-    // wait for file to exist
-    while (access(filename.c_str(),F_OK) != 0) {
-        printf("Waiting for network %s to exist...\n",filename.c_str());
-        sleep(2);
+    if (access(filename.c_str(), F_OK) != 0) {
+        if (debug) printf("Creating pcap file: %s\n", filename.c_str());
+        struct pcap_file_header pfh;
+        bool is_little_endian = (htonl(1) != 1);
+        if (is_little_endian) {
+            pfh.magic = 0xd4c3b2a1;  // might be wrong
+            pfh.version_major = 0x0200;
+            pfh.version_minor = 0x0400;
+            pfh.thiszone = 0x00000000;
+            pfh.sigfigs = 0x00000000;
+            pfh.snaplen = 0x00002710; 
+            pfh.linktype = 0x00000001;
+            file_is_big_endian = false;
+        } else {
+            pfh.magic = 0xa1b2c3d4; // might be wrong
+            pfh.version_major = 0x0002;
+            pfh.version_minor = 0x0004;
+            pfh.thiszone = 0x00000000;
+            pfh.sigfigs = 0x00000000;
+            pfh.snaplen = 0x00002710;
+            pfh.linktype = 0x00000001;
+            file_is_big_endian = true;
+        }
+        int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd < 0) {
+            perror("create pcap file");
+            exit(1);
+        }
+        if (write(fd, &pfh, sizeof(pfh)) != sizeof(pfh)) {
+            perror("write pcap header");
+            close(fd);
+            exit(1);
+        }
+        close(fd);
     }
 
     int fd_r = open(filename.c_str(),O_RDONLY);
