@@ -91,6 +91,12 @@ void process_packet(int interface_idx) {
     } 
     // case forwarding
     else {
+        ip->ttl--;
+        if (ip->ttl == 0) {
+            if (debug) printf("TTL expired for packet to %s\n", ip_to_str(ip->dest).c_str());
+            return;
+        }
+
         int best_idx = -1;
         uint32_t best_mask = 0;
         for (size_t i = 0; i < routing_table.size(); i++) {
@@ -108,31 +114,24 @@ void process_packet(int interface_idx) {
 
         int out_iface = routing_table[best_idx].interface_idx;
         uint32_t next_hop = routing_table[best_idx].next_hop;
+        uint16_t cache_key = ntohs(next_hop & 0xFFFF);
+        
+        if (arp_cache.count(cache_key)) {
+            memcpy(eth->dst,arp_cache[cache_key].data(),6);
+            memcpy(eth->src,interfaces[out_iface].mac_addr,6);
+            ip->checksum = 0;
+            ip->checksum = checksum(&ip, (ip->version_ihl & 0x0f) * 4);
+            write_packet(out_iface,packet,pph.caplen);
 
-        uint8_t* next_hop_mac = nullptr; // c
-        if (arp_cache.count(next_hop)) {
-            memcpy(next_hop_mac, arp_cache[next_hop].data(), 6);
+            if (debug) printf("Forwarded packet to %s via iface %d, dst MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
+                ip_to_str(ip->dest).c_str(), out_iface,
+                eth->dst[0], eth->dst[1], eth->dst[2], eth->dst[3], eth->dst[4], eth->dst[5]);
         } else {
             arp_request(out_iface,next_hop);
+            if (debug) printf("No MAC for %s, sent ARP request on iface %d, dropping packet\n",
+                ip_to_str(next_hop).c_str(), out_iface);
             return;
         }
-
-        std::vector<uint8_t> buffer;
-        eth_hdr eth;
-        memcpy(eth.dst,next_hop_mac,6);
-        memcpy(eth.src,interfaces[out_iface].mac_addr,6);
-        eth.type = htons(0x0800);
-        buffer.insert(buffer.end(),(uint8_t*)&eth,(uint8_t*)&eth + sizeof(eth));
-
-        ip->ttl--;
-        if (ip->ttl == 0) {
-            if (debug) printf("TTL expired for packet to %s\n", ip_to_str(ip->dest).c_str());
-            return;
-        }
-        ip->checksum = 0;
-        ip->checksum = checksum(&ip, (ip->version_ihl & 0x0f) * 4);
-        buffer.insert(buffer.end(),(uint8_t*)ip,(uint8_t*)ip + ntohs(ip->total_length));
-        write_packet(out_iface,buffer.data(),buffer.size());
     }
 }
 
