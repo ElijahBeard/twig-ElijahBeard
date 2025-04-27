@@ -13,6 +13,7 @@
 #include <sys/time.h>
 #include <arpa/inet.h>
 #include <sys/uio.h>
+#include <array>
 
 #include "utils.h"
 #include "pheaders.h"
@@ -36,7 +37,7 @@ struct route {
 
 int debug = 0;
 
-std::unordered_map<uint32_t, uint8_t[6]> arp_cache;
+std::unordered_map<uint32_t, std::array<uint8_t,6> > arp_cache;
 struct interface interfaces[10];
 int num_interfaces = 0;
 std::vector<route> routing_table;

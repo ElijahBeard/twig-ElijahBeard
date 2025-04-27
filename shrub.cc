@@ -40,6 +40,10 @@ void process_packet(int interface_idx) {
 
     
     eth_hdr* eth = (eth_hdr*)packet;
+    if(ntohs(eth->type) == 0x0806) {
+        process_arp(interface_idx,pph,packet);
+        return;
+    }
     //if (memcmp(eth->src, interfaces[interface_idx].mac_addr, 6) == 0) return;
         
     ipv4_hdr* ip = (ipv4_hdr*)(packet + sizeof(eth_hdr));
@@ -103,9 +107,9 @@ void process_packet(int interface_idx) {
         int out_iface = routing_table[best_idx].interface_idx;
         uint32_t next_hop = routing_table[best_idx].next_hop;
 
-        uint8_t* next_hop_mac;
+        uint8_t* next_hop_mac = nullptr; // c
         if (arp_cache.count(next_hop)) {
-            next_hop_mac = arp_cache[next_hop];
+            memcpy(next_hop_mac, arp_cache[next_hop].data(), 6);
         } else {
             arp_request(out_iface,next_hop);
             return;
