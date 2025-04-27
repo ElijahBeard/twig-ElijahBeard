@@ -218,10 +218,11 @@ void init_routing_table() {
         uint32_t mask = (0xffffffff << (32 - interfaces[i].mask_length)) & 0xffffffff;
         uint32_t network = calc_network(interfaces[i].ipv4_addr, mask);
         routing_table.push_back({network, mask, 0, 0, i});
+        if (debug) {
+            printf("Added route for iface %d: %s/%d\n", i,
+                   ip_to_str(network).c_str(), interfaces[i].mask_length);
+        }
     }
-
-    print_routing_table();
-
     if (!default_route.empty()) {
         if (num_interfaces == 1) {
             fprintf(stderr, "--default-route only for routers\n");
@@ -231,7 +232,8 @@ void init_routing_table() {
         int iface_idx = -1;
         for (int i = 0; i < num_interfaces; i++) {
             uint32_t mask = (0xffffffff << (32 - interfaces[i].mask_length)) & 0xffffffff;
-            if ((next_hop & mask) == (interfaces[i].ipv4_addr & mask)) {
+            uint32_t network = calc_network(interfaces[i].ipv4_addr, mask);
+            if ((next_hop & mask) == network) {
                 iface_idx = i;
                 break;
             }
@@ -241,8 +243,12 @@ void init_routing_table() {
             exit(1);
         }
         routing_table.push_back({0, 0, next_hop, 1, iface_idx});
-        print_routing_table();
+        if (debug) {
+            printf("Added default route via %s on iface %d\n",
+                   ip_to_str(next_hop).c_str(), iface_idx);
+        }
     }
+    print_routing_table();
 }
 
 void write_packet(int interface_idx, const void* data, size_t len) {
