@@ -10,28 +10,29 @@ The commits here are copied over from an old repo of shrub, but I decided to com
 Structure
 ```
 /shrub-ElijahBeard
-  |_ shrub.cc (parse input, parse interface, setup interface, loop through interfaces, uses twig.h read_packet / process_packet)
-  |_ shrub.h (contains globals, input parsing, function definition)
-  |_ rip.h (contains routing tables, init_routing, add_route)
+  |_ shrub.cc (main, process packet)
+  |_ shrub.h (contains globals, input parsing, write packets, other logic)
+  |_ rip.h (process rip, send rip announcements)
   |_ utils.h (swap_16, swap_32, ip_to_mac, ip_to_string, string_to_ip, calc_network, etc)
-  |_ arp.h
-  |_ icmp.h
-  |_ udp.h
-  |_ pheaders.h (all packet headers)
+  |_ arp.h 
+  |_ icmp.h (icmp replies)
+  |_ udp.h (udp echo replies, udp time, udp checksum)
+  |_ pheaders.h (contains all packet headers)
 ```
 
 # TODO 
 - [x] parse_input(int argc, char* argv[])
-- [_] interfaces init
-- [_] interfaces loop
+- [x] interfaces init
+- [x] interfaces loop
 - [x] correctly read packet
 - [x] correctly write packet
 - [x] routing tables init
 - [/] utilize routing tables
 - [x] icmp
-- [/] udp "open issue"
-- [_] udp time "open issue"
-- [_] udp ping "open issue"
-- [_] rip
+- [x] udp "open issue"
+- [x] udp time "open issue"
+- [x] udp ping "open issue"
+- [x] rip
+- [x] arp
 - [_] CHAIN working
 - [_] BOWTIE working
