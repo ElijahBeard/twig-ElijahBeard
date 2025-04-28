@@ -1,0 +1,16 @@
+As of this moment its 11:54 on Sunday. I recieved an extention to compelte this on Saturday due to losing my laptop
+I ended up reaching the last of my abilities here. This is what i've done:
+
+Single Interface:
+ICMP / PING
+ARP
+UDP / UDPPING
+
+Multiple Interface:
+CHAIN PING
+CHAIN UDPPING
+SOCKETTIME
+
+I have NOT done:
+CHAIN traceroute
+any BOWTIE
