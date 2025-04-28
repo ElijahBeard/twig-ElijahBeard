@@ -96,7 +96,7 @@ std::vector<std::string> parse_interfaces(int argc, char* argv[]){
         }
         if(strcmp(argv[i], "-d") == 0) {
             debug++;
-            printf("im debugging ^^\n");
+            //printf("im debugging ^^\n");
         }
         if(strcmp(argv[i], "-r") == 0) {
             i++;
@@ -133,7 +133,7 @@ void setup_interface(const char* interface_, int interface_idx) {
 
     char filename[64];
     snprintf(filename,sizeof(filename),"%s_%u.dmp",ip_to_str(network).c_str(), mask_length);
-    if(debug) printf("%s_%u.dmp",ip_to_str(network).c_str(),mask_length);
+    if(debug) printf("%s_%u.dmp\n",ip_to_str(network).c_str(),mask_length);
 
     struct stat st;
     if(stat(filename,&st) == 0) {

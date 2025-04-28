@@ -36,7 +36,7 @@ void process_packet(int interface_idx) {
 
     ret = read(interfaces[interface_idx].fd_r,packet,pph.caplen);
     if (ret < (int)pph.caplen) return;
-    if (debug) printf("just read %d bytes out of packet. true psize: %d\n",ret,(int)pph.caplen);
+    //if (debug) printf("just read %d bytes out of packet. true psize: %d\n",ret,(int)pph.caplen);
     if (pph.caplen < sizeof(eth_hdr)) {if(debug) printf("packets' too damn small for ether\n");}
 
     
