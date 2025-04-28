@@ -74,13 +74,7 @@ void process_rip(int interface_idx, ipv4_hdr* ip, udp_hdr* udp, const char* data
         size_t num_entries = (len - sizeof(rip_hdr)) / sizeof(rip_entry);
         rip_entry* entries = (rip_entry*)(data + sizeof(rip_hdr));
         bool full_table = (num_entries == 1 && entries[0].ip == 0);
-
-        if(full_table) {
-            send_rip_response(interface_idx,ip->src);
-        } else {
-            // possible expansion routes requests.
-            send_rip_response(interface_idx,ip->src);
-        }
+        send_rip_response(interface_idx,ip->src);
     } else if (rip->command == 2) {
         size_t num_entries = (len - sizeof(rip_hdr)) / sizeof(rip_entry);
         rip_entry* entries = (rip_entry*)(data + sizeof(rip_hdr));
@@ -101,6 +95,7 @@ void process_rip(int interface_idx, ipv4_hdr* ip, udp_hdr* udp, const char* data
                         route.next_hop = next_hop;
                         route.interface_idx = interface_idx;
                         route.last_update = time(nullptr);
+                        if (debug) printf("Updated route: %s/%d\n", ip_to_str(dest).c_str(), 32 - __builtin_clz(mask));
                     }
                     update = true;
                     break;

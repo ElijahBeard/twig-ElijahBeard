@@ -73,7 +73,12 @@ int write_pcap_file_header(const char* filename) {
     } else if (pid > 0) {
         int status;
         waitpid(pid, &status, 0);
-        return WEXITSTATUS(status);
+        if(WEXITSTATUS(status) != 0) {
+            printf("Pcap write failed");
+            return -1;
+        }
+        usleep(100000);
+        return 0;
     } else {
         perror("fork");
         return -1;
@@ -210,7 +215,7 @@ void print_routing_table() {
     for (const auto& entry : routing_table) {
         printf("\tDest: %s/%d, Next Hop: %s, Metric: %d, Iface: %d\n",
                ip_to_str(entry.dest_ip).c_str(),
-               32 - __builtin_clz(entry.mask),
+               entry.mask,
                entry.next_hop ? ip_to_str(entry.next_hop).c_str() : "Direct",
                entry.metric, entry.interface_idx);
     }
@@ -238,20 +243,29 @@ void init_routing_table() {
         if (pos != std::string::npos) {
             clean_default_route = clean_default_route.substr(0, pos);
         }
-
         uint32_t next_hop = str_to_ip(clean_default_route.c_str());
+        if (next_hop == 0) {
+            printf("Invalid default route IP: %s\n",clean_default_route.c_str());
+        }
         int iface_idx = -1;
         for (int i = 0; i < num_interfaces; i++) {
             uint32_t mask = (0xffffffff << (32 - interfaces[i].mask_length)) & 0xffffffff;
             uint32_t network = calc_network(interfaces[i].ipv4_addr, interfaces[i].mask_length);
-            if ((next_hop & mask) == network) {
+            uint32_t next_hop_masked = next_hop & mask;
+            if (debug) {
+                printf("Checking next_hop %s (masked: %s) against iface %d network %s, mask %s\n",
+                       ip_to_str(next_hop).c_str(), ip_to_str(next_hop_masked).c_str(),
+                       i, ip_to_str(network).c_str(), ip_to_str(mask).c_str());
+            }
+            if (next_hop_masked == network) {
                 iface_idx = i;
                 break;
             }
         }
         if (iface_idx == -1) {
             fprintf(stderr, "Default route next hop not on any network\n");
-            exit(1);
+            //exit(1);
+            return;
         }
         routing_table.push_back({0, 0, next_hop, 1, iface_idx});
         if (debug) {
