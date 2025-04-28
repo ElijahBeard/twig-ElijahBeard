@@ -67,16 +67,14 @@ void process_rip(int interface_idx, ipv4_hdr* ip, udp_hdr* udp, const char* data
     if (len < sizeof(rip_hdr)) return;
     rip_hdr* rip = (rip_hdr*)data;
     if(rip->version != 2 || rip->zero != 0 ) return;
+
     if (debug) printf("Received RIP packet on iface %d, command %d\n",
         interface_idx, rip->command);
 
     if(rip->command == 1) {
-        // size_t num_entries = (len - sizeof(rip_hdr)) / sizeof(rip_entry);
-        // rip_entry* entries = (rip_entry*)(data + sizeof(rip_hdr));
-        // bool full_table = (num_entries == 1 && entries[0].ip == 0);
-        // if (debug) printf("RIP request: %s table\n", full_table ? "full" : "partial");
         send_rip_response(interface_idx,ip->src);
-    } else if (rip->command == 2) {
+    } 
+    else if (rip->command == 2) {
         size_t num_entries = (len - sizeof(rip_hdr)) / sizeof(rip_entry);
         rip_entry* entries = (rip_entry*)(data + sizeof(rip_hdr));
         
@@ -88,22 +86,42 @@ void process_rip(int interface_idx, ipv4_hdr* ip, udp_hdr* udp, const char* data
 
             if (dest == interfaces[interface_idx].ipv4_addr || metric + 1 > rip_cost_infinity) continue;
 
-            bool update = false;
+            metric += 1;
+            if (metric > rip_cost_infinity) {
+                metric = rip_cost_infinity;
+            }
+
+            bool found = false;
             for (auto& route : routing_table) {
                 if (route.dest_ip == dest && route.mask == mask) {
-                    if (metric + 1 < route.metric) {
-                        route.metric = metric + 1;
+                    found = true;
+                    if (metric < route.metric || route.next_hop == next_hop) {
+                        route.metric = metric;
                         route.next_hop = next_hop;
                         route.interface_idx = interface_idx;
                         route.last_update = time(nullptr);
-                        if (debug) printf("Updated route: %s/%d\n", ip_to_str(dest).c_str(), 32 - __builtin_clz(mask));
+
+                        if (debug) {
+                            printf("Updated route: %s/%d via %s metric %d\n",
+                                   ip_to_str(dest).c_str(), 32 - __builtin_clz(mask),
+                                   ip_to_str(next_hop).c_str(), metric);
+                        }
+                    } else if (metric == rip_cost_infinity) {
+                        route.metric = rip_cost_infinity;
+                        if (debug) {
+                            printf("Route expired: %s/%d\n", ip_to_str(dest).c_str(), 32 - __builtin_clz(mask));
+                        } 
                     }
-                    update = true;
                     break;
                 }
             }
-            if (!update && metric < rip_cost_infinity - 1) {
-                routing_table.push_back({dest,mask,next_hop,metric + 1,interface_idx,time(nullptr)});
+            if (!found && metric < rip_cost_infinity - 1) {
+                routing_table.push_back({dest, mask, next_hop, metric, interface_idx, time(nullptr)});
+                if (debug) {
+                    printf("Added new route: %s/%d via %s metric %d\n",
+                           ip_to_str(dest).c_str(), 32 - __builtin_clz(mask),
+                           ip_to_str(next_hop).c_str(), metric);
+                }
             }
             if (debug) print_routing_table();
         }

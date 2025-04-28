@@ -227,17 +227,13 @@ void init_routing_table() {
     for (int i = 0; i < num_interfaces; i++) {
         uint32_t mask = (0xffffffff << (32 - interfaces[i].mask_length)) & 0xffffffff;
         uint32_t network = calc_network(interfaces[i].ipv4_addr, interfaces[i].mask_length);
-        routing_table.push_back({network, mask, 0, 0, i});
+        routing_table.push_back({network, mask, 0, 0, i, time(nullptr)}); // 0 metric for directly connected
         if (debug) {
-            printf("Added route for iface %d: %s/%d\n", i,
-                   ip_to_str(network).c_str(), interfaces[i].mask_length);
+            printf("Added direct route for iface %d: %s/%d\n",
+                   i, ip_to_str(network).c_str(), interfaces[i].mask_length);
         }
     }
     if (!default_route.empty()) {
-        // if (num_interfaces == 1) {
-        //     fprintf(stderr, "--default-route only for routers\n");
-        //     exit(1);
-        // }
         std::string clean_default_route = default_route;
         size_t pos = clean_default_route.find('_');
         if (pos != std::string::npos) {
@@ -248,30 +244,10 @@ void init_routing_table() {
             fprintf(stderr, "Invalid default route IP: %s\n", clean_default_route.c_str());
             exit(1);
         }
-        int iface_idx = -1;
-        for (int i = 0; i < num_interfaces; i++) {
-            uint32_t mask = (0xffffffff << (32 - interfaces[i].mask_length)) & 0xffffffff;
-            uint32_t network = calc_network(interfaces[i].ipv4_addr, interfaces[i].mask_length);
-            uint32_t next_hop_masked = next_hop & mask;
-            if (debug) {
-                printf("Checking next_hop %s (masked: %s) against iface %d network %s, mask %s\n",
-                       ip_to_str(next_hop).c_str(), ip_to_str(next_hop_masked).c_str(),
-                       i, ip_to_str(network).c_str(), ip_to_str(mask).c_str());
-            }
-            if (next_hop_masked == network) {
-                iface_idx = i;
-                break;
-            }
-        }
-        if (iface_idx == -1) {
-            fprintf(stderr, "Default route next hop not on any network\n");
-            exit(1);
-            //return;
-        }
-        routing_table.push_back({0, 0, next_hop, 1, iface_idx});
+
+        routing_table.push_back({0, 0, next_hop, 1, 0, time(nullptr)}); // 0.0.0.0/0
         if (debug) {
-            printf("Added default route via %s on iface %d\n",
-                   ip_to_str(next_hop).c_str(), iface_idx);
+            printf("Added default route via %s\n", ip_to_str(next_hop).c_str());
         }
     }
     print_routing_table();
