@@ -125,6 +125,7 @@ void process_packet(int interface_idx) {
 
         if (best_idx == -1) {
             if (debug) printf("No route to host: %s\n", ip_to_str(ip->dest).c_str());
+            send_destintation_unreachable(interface_idx,eth,ip);
             return;
         }
 
@@ -158,7 +159,7 @@ int main(int argc, char* argv[]) {
 
     init_routing_table();
 
-    time_t last_rip = 0;
+    time_t last_rip = time(nullptr) + 2;
     while(1) {
         fd_set readfds;
         FD_ZERO(&readfds);
