@@ -191,11 +191,25 @@ void setup_interface(const char* interface_, int interface_idx) {
         pfh.sigfigs = swap32(pfh.sigfigs);
         pfh.snaplen = swap32(pfh.snaplen);
         pfh.linktype = swap32(pfh.linktype);
-    } else {
-        fprintf(stderr, "invalid magic number: 0x%08x\n", pfh.magic);
-        exit(1);
-    }
+    } 
 
+    if (pfh.linktype != 1) {
+        fprintf(stderr, "Incorrect linktype, overwriting pcap header for %s\n", filename);
+        close(fd_r);
+        close(fd_w);
+        write_pcap_file_header(filename);
+        fd_r = open(filename, O_RDONLY);
+        fd_w = open(filename, O_WRONLY | O_APPEND);
+        if (fd_r < 0 || fd_w < 0) {
+            perror("open");
+            exit(1);
+        }
+        if (read(fd_r, &pfh, sizeof(pfh)) != sizeof(pfh)) {
+            perror("read pcap header after fix");
+            exit(1);
+        }
+    }
+        
     interfaces[interface_idx].ipv4_addr = ip;
     interfaces[interface_idx].mask_length = mask_length;
     ip_to_mac(ip, interfaces[interface_idx].mac_addr);
