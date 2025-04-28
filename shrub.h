@@ -213,9 +213,10 @@ void print_routing_table() {
     if (!debug) return;
     printf("Routing Table:\n");
     for (const auto& entry : routing_table) {
+        int mask_length = entry.mask == 0 ? 0 : 32 - __builtin_clz(entry.mask);
         printf("\tDest: %s/%d, Next Hop: %s, Metric: %d, Iface: %d\n",
                ip_to_str(entry.dest_ip).c_str(),
-               entry.mask,
+               mask_length,
                entry.next_hop ? ip_to_str(entry.next_hop).c_str() : "Direct",
                entry.metric, entry.interface_idx);
     }

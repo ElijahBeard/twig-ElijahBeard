@@ -99,8 +99,7 @@ std::string ip_to_str(uint32_t ip) {
 
 uint32_t calc_network(uint32_t ip, uint32_t mask_length) {
     uint32_t mask = (0xffffffff << (32 - mask_length)) & 0xffffffff;
-    uint32_t network = ip & mask;
-    return network;
+    return ip & mask;
 }
 
 void ip_to_mac(uint32_t ip, uint8_t mac[6]) {
