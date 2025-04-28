@@ -4,6 +4,8 @@
 #include <iostream>
 #include <unordered_map>
 
+#include "pheaders.h"
+
 typedef int32_t bpf_int32;
 typedef u_int32_t bpf_u_int32;
 
@@ -53,6 +55,32 @@ uint16_t checksum(const void* data, size_t len) {
     while (sum >> 16) sum = (sum & 0xffff) + (sum >> 16);
     return ~sum;
 }
+
+inline uint16_t udp_checksum(const ipv4_hdr& ip, const udp_hdr& udp, const uint8_t* payload, size_t payload_len) {
+    struct pseudo_header {
+        uint32_t src_addr;
+        uint32_t dst_addr;
+        uint8_t zero;
+        uint8_t protocol;
+        uint16_t udp_length;
+    } __attribute__((packed));
+
+    pseudo_header ph;
+    ph.src_addr = ip.src;
+    ph.dst_addr = ip.dest;
+    ph.zero = 0;
+    ph.protocol = 17;
+    ph.udp_length = udp.len;
+
+    std::vector<uint8_t> data;
+
+    data.insert(data.end(), (uint8_t*)&ph, (uint8_t*)&ph + sizeof(ph));
+    data.insert(data.end(), (uint8_t*)&udp, (uint8_t*)&udp + sizeof(udp_hdr));
+    data.insert(data.end(), payload, payload + payload_len);
+
+    return checksum(data.data(), data.size());
+}
+
 
 uint16_t swap16(uint16_t val) {
     return (val >> 8) | (val << 8);

@@ -13,27 +13,6 @@
 
 #include "shrub.h" // for globals
 
-uint16_t udp_checksum(pcap_pkthdr packet_header, ipv4_hdr *ip_response, udp_hdr *udp_response) {
-    udp_pseudo p_udp;
-    p_udp.src = ip_response->src;
-    p_udp.dst = ip_response->dest;
-    p_udp.zeros = 0;
-    p_udp.protocol = 17;
-    p_udp.udp_len = udp_response->len;
-
-    size_t packet_length = packet_header.caplen;
-    uint8_t ip_header_len = (ip_response->version_ihl & 0b1111) * 4;
-    size_t udp_data_len = packet_length - 14 - ip_header_len - sizeof(udp_hdr);
-    size_t total_len = sizeof(p_udp) + sizeof(udp_hdr) + udp_data_len;
-    uint8_t* checksum_buf = new uint8_t[total_len];
-    memcpy(checksum_buf, &p_udp, sizeof(p_udp));
-    memcpy(checksum_buf + sizeof(p_udp), udp_response, sizeof(udp_hdr) + udp_data_len);
-
-    uint16_t udp_check = checksum(reinterpret_cast<uint16_t*>(checksum_buf), total_len);
-    delete[] checksum_buf;
-    return udp_check;
-}
-
 void udp_respond(int interface_idx, const struct pcap_pkthdr* pph, const char* packet){
     const struct eth_hdr* i_eth = (const struct eth_hdr*)packet;
     const struct ipv4_hdr* i_ip = (const struct ipv4_hdr*)(packet + sizeof(struct eth_hdr));

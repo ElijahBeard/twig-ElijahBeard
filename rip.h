@@ -44,7 +44,7 @@ void send_rip_response(int interface_idx, uint32_t dest) {
     udp.len = htons(sizeof(udp) + sizeof(rip_hdr) + routing_table.size()*sizeof(rip_entry));
     udp.checksum = 0;
     buffer.insert(buffer.end(), (uint8_t*)&udp, (uint8_t*)&udp + sizeof(udp));
-
+    
     rip_hdr rip;
     rip.command = 2;
     rip.version = 2;
@@ -62,6 +62,18 @@ void send_rip_response(int interface_idx, uint32_t dest) {
         entry.metric = htonl(route.next_hop == dest ? rip_cost_infinity : route.metric);
         buffer.insert(buffer.end(), (uint8_t*)&entry, (uint8_t*)&entry + sizeof(entry));
     }
+
+    size_t ip_offset = sizeof(eth_hdr);
+    size_t udp_offset = ip_offset + sizeof(ipv4_hdr);
+
+    ipv4_hdr* ip_ptr = (ipv4_hdr*)(buffer.data() + ip_offset);
+    udp_hdr* udp_ptr = (udp_hdr*)(buffer.data() + udp_offset);
+    const uint8_t* udp_payload = buffer.data() + udp_offset + sizeof(udp_hdr);
+    size_t udp_payload_len = ntohs(udp_ptr->len) - sizeof(udp_hdr);
+
+    udp_ptr->checksum = 0;
+    udp_ptr->checksum = udp_checksum(*ip_ptr, *udp_ptr, udp_payload, udp_payload_len);
+
     if (debug) printf("Sending RIP response on iface %d to %s\n",
         interface_idx, ip_to_str(dest).c_str());
     write_packet(interface_idx,buffer.data(),buffer.size());
