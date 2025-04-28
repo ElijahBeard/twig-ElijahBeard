@@ -57,16 +57,20 @@ void process_packet(int interface_idx) {
     for (int i = 0; i < num_interfaces; i++) {
         if (ip->dest == interfaces[i].ipv4_addr) {
             local = true;
-            if(debug) printf("Im local ho!\n");
             break;
         }
-        uint32_t network = calc_network(interfaces[i].ipv4_addr,interfaces[i].mask_length);
+        uint32_t network = calc_network(interfaces[i].ipv4_addr, interfaces[i].mask_length);
         uint32_t broadcast = network | (~((0xffffffff) << (32 - interfaces[i].mask_length)));
         if (ip->dest == broadcast) {
             local = true;
             break;
         }
     }
+
+    if (ip->dest == rip_multicast_addr) {
+        local = true;
+    }
+    
     if(debug){if(!local) printf("Im not local ho\n");}
 
     // case dst is current index
