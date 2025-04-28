@@ -11,9 +11,13 @@ void send_rip_response(int interface_idx, uint32_t dest) {
 
     eth_hdr eth;
     if (dest == rip_multicast_addr) {
-        memset(eth.dst,0xFF,6);
+        eth.dst[0] = 0x01;
+        eth.dst[1] = 0x00;
+        eth.dst[2] = 0x5e;
+        eth.dst[3] = 0x00;
+        eth.dst[4] = 0x00;
+        eth.dst[5] = 0x09;
     } else {
-        // implement resolve via ARP
         memset(eth.dst,0xFF,6);
     }
     memcpy(eth.src,interfaces[interface_idx].mac_addr,6);
