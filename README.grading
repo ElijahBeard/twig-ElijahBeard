@@ -1,16 +1,39 @@
-As of this moment its 11:54 on Sunday. I recieved an extention to compelte this on Saturday due to losing my laptop
-I ended up reaching the last of my abilities here. This is what i've done:
+-- GRADING FILE FOR ELIJAH BEARD SHRUB --
+
+Plea~ ;_; 
+    As of this moment its 11:54 on Sunday. I recieved an extention to complete this on Saturday, due to losing my laptop
+    I ended up reaching the last of my abilities here. It's single threaded looped with docker. Focusing the rest of my
+    efforts for the final
+
+-- TEST INSTRUCTIONS --
 
 Single Interface:
-ICMP / PING
-ARP
-UDP / UDPPING
+    1. make shrub into the Twig_tools directory
+    2. ./docker_test.sh --rm
+    3. ./shrub [-d] -i 172.31.128.2_24
+ICMP PING
+    4. ping 172.31.128.2
+UDP PING
+    5. udpping 172.31.128.2
+SOCKETIME
+    6. socket_time 172.31.128.2
+
 
 Multiple Interface:
-CHAIN PING
-CHAIN UDPPING
-SOCKETTIME
+CHAIN
+    1. make shrub into the Twig_tools directory
+    2. ./dockershim.sh
+    3. ./CHAIN.sh -d=172.31.127.254
+ICMP PING
+    4. wait for those RIPs 10s-30s
+    5. ping -c 5 172.31.128.254
+        ~etc~
+UDP PING ~ same
+SOCKETTIME ~ same 
+TRACEROUTE ~ traceroute -N 1 172.31.5.254
 
-I have NOT done:
-CHAIN traceroute
-any BOWTIE
+HAVE NOT IMPLEMENTED FOR SAVING YOUR PRECIOUS TIME:
+BOWTIE
+
+[XTRA FEATURES]
+does include arp but it has to be uncommented since i didn't make any actual usecase
