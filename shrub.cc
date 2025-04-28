@@ -42,7 +42,7 @@ void process_packet(int interface_idx) {
     
     eth_hdr* eth = (eth_hdr*)packet;
     if (!eth) {if(debug) printf("Null eth_hdr on iface %d\n",interface_idx);}
-    
+
     // NOT DOING ARP FOR NOW
 
     // if(ntohs(eth->type) == 0x0806) {
@@ -52,11 +52,18 @@ void process_packet(int interface_idx) {
     //if (memcmp(eth->src, interfaces[interface_idx].mac_addr, 6) == 0) return;
         
     ipv4_hdr* ip = (ipv4_hdr*)(packet + sizeof(eth_hdr));
+
     bool local = false;
     for (int i = 0; i < num_interfaces; i++) {
         if (ip->dest == interfaces[i].ipv4_addr) {
             local = true;
             if(debug) printf("Im local ho!\n");
+            break;
+        }
+        uint32_t network = calc_network(interfaces[i].ipv4_addr,interfaces[i].mask_length);
+        uint32_t broadcast = network | (~((0xffffffff) << (32 - interfaces[i].mask_length)));
+        if (ip->dest == broadcast) {
+            local = true;
             break;
         }
     }
@@ -77,15 +84,16 @@ void process_packet(int interface_idx) {
         else if (ip->protocol == 17) {
             if(debug) printf("im UDP!\n");
             udp_hdr* udp = (udp_hdr*)(packet + sizeof(eth_hdr) + (ip->version_ihl & 0x0f) * 4);
-            if (ntohs(udp->dport) == 7) {
+            uint16_t dport = ntohs(udp->dport);
+            if (dport == 7) {
                 if(debug) printf("im UDP RESPOND!\n");
                 udp_respond(interface_idx,&pph,packet);
             } 
-            else if (ntohs(udp->dport) == 37) {
+            else if (dport == 37) {
                 if(debug) printf("im UDP TIME!\n");
                 udp_time(interface_idx,&pph,packet);
             }
-            else {
+            else if (dport == 520){
                 if(debug) printf("im RIP! :D\n");
                 process_rip(interface_idx, ip, udp, (char*)udp + sizeof(udp_hdr), 
                 pph.caplen - sizeof(eth_hdr) - (ip->version_ihl & 0x0f)*4 - sizeof(udp_hdr));
@@ -100,6 +108,9 @@ void process_packet(int interface_idx) {
             if (debug) printf("TTL expired for packet to %s\n", ip_to_str(ip->dest).c_str());
             return;
         }
+        // all over the place
+        ip->checksum = 0;
+        ip->checksum = checksum(ip, (ip->version_ihl & 0x0f) * 4);
 
         int best_idx = -1;
         uint32_t best_mask = 0;
@@ -111,29 +122,21 @@ void process_packet(int interface_idx) {
                 }
             }
         }
-        uint32_t next_hop = 0;
+
         if (best_idx == -1) {
-            for (const auto& route : routing_table) {
-                if (route.next_hop == 0 && route.interface_idx == interface_idx) {
-                    best_idx = route.interface_idx;
-                    next_hop = route.next_hop;
-                    if (debug) printf("Using default route on iface %d\n", best_idx);
-                    break;
-                }
-            }
+            if (debug) printf("No route to host: %s\n", ip_to_str(ip->dest).c_str());
+            return;
         }
 
         int out_iface = routing_table[best_idx].interface_idx;
-        next_hop = routing_table[best_idx].next_hop;
+        uint32_t next_hop = routing_table[best_idx].next_hop;
+        if (next_hop == 0) next_hop = ip->dest;
         uint16_t cache_key = ntohs(next_hop & 0xFFFF);
         
         if (arp_cache.count(cache_key)) {
             memcpy(eth->dst,arp_cache[cache_key].data(),6);
             memcpy(eth->src,interfaces[out_iface].mac_addr,6);
-            ip->checksum = 0;
-            ip->checksum = checksum(&ip, (ip->version_ihl & 0x0f) * 4);
             write_packet(out_iface,packet,pph.caplen);
-
             if (debug) printf("Forwarded packet to %s via iface %d, dst MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
                 ip_to_str(ip->dest).c_str(), out_iface,
                 eth->dst[0], eth->dst[1], eth->dst[2], eth->dst[3], eth->dst[4], eth->dst[5]);
@@ -164,7 +167,7 @@ int main(int argc, char* argv[]) {
             FD_SET(interfaces[i].fd_r,&readfds);
             if (interfaces[i].fd_r > max_fd) max_fd = interfaces[i].fd_r;
         }
-        struct timeval tv = {1,0}; // 1 sec timeout
+        struct timeval tv = {1,0};
         int ret = select(max_fd + 1, &readfds, NULL, NULL, &tv);
         if (ret < 0){
             if (errno == EINTR) continue;
@@ -182,8 +185,8 @@ int main(int argc, char* argv[]) {
         } else {
             for (int i = 0; i < num_interfaces; i++) {
                 if (FD_ISSET(interfaces[i].fd_r, &readfds)) {
-                    usleep(10000);
                     //if (debug) printf("im processing a damn packet yo\n");
+                    usleep(10000);
                     process_packet(i);
                 }
             }
