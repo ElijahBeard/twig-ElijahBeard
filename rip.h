@@ -71,10 +71,11 @@ void process_rip(int interface_idx, ipv4_hdr* ip, udp_hdr* udp, const char* data
         interface_idx, rip->command);
 
     if(rip->command == 1) {
-        size_t num_entries = (len - sizeof(rip_hdr)) / sizeof(rip_entry);
-        rip_entry* entries = (rip_entry*)(data + sizeof(rip_hdr));
-        bool full_table = (num_entries == 1 && entries[0].ip == 0);
-        if (debug) printf("RIP request: %s table\n", full_table ? "full" : "partial");        send_rip_response(interface_idx,ip->src);
+        // size_t num_entries = (len - sizeof(rip_hdr)) / sizeof(rip_entry);
+        // rip_entry* entries = (rip_entry*)(data + sizeof(rip_hdr));
+        // bool full_table = (num_entries == 1 && entries[0].ip == 0);
+        // if (debug) printf("RIP request: %s table\n", full_table ? "full" : "partial");
+        send_rip_response(interface_idx,ip->src);
     } else if (rip->command == 2) {
         size_t num_entries = (len - sizeof(rip_hdr)) / sizeof(rip_entry);
         rip_entry* entries = (rip_entry*)(data + sizeof(rip_hdr));
