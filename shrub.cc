@@ -42,10 +42,13 @@ void process_packet(int interface_idx) {
     
     eth_hdr* eth = (eth_hdr*)packet;
     if (!eth) {if(debug) printf("Null eth_hdr on iface %d\n",interface_idx);}
-    if(ntohs(eth->type) == 0x0806) {
-        process_arp(interface_idx,pph,packet);
-        return;
-    }
+    
+    // NOT DOING ARP FOR NOW
+
+    // if(ntohs(eth->type) == 0x0806) {
+    //     process_arp(interface_idx,pph,packet);
+    //     return;
+    // }
     //if (memcmp(eth->src, interfaces[interface_idx].mac_addr, 6) == 0) return;
         
     ipv4_hdr* ip = (ipv4_hdr*)(packet + sizeof(eth_hdr));
@@ -93,6 +96,7 @@ void process_packet(int interface_idx) {
     else {
         ip->ttl--;
         if (ip->ttl == 0) {
+            // TODO ICMP TIME EXCEEDED
             if (debug) printf("TTL expired for packet to %s\n", ip_to_str(ip->dest).c_str());
             return;
         }
@@ -100,20 +104,27 @@ void process_packet(int interface_idx) {
         int best_idx = -1;
         uint32_t best_mask = 0;
         for (size_t i = 0; i < routing_table.size(); i++) {
-            if ((ip->dest & routing_table[i].mask) == routing_table[i].dest_ip &&
-                routing_table[i].mask >= best_mask) {
-                best_idx = i;
-                best_mask = routing_table[i].mask;
+            if ((ip->dest & routing_table[i].mask) == routing_table[i].dest_ip) {
+                if (routing_table[i].mask > best_mask) {
+                    best_idx = i;
+                    best_mask = routing_table[i].mask;
+                }
+            }
+        }
+        uint32_t next_hop = 0;
+        if (best_idx == -1) {
+            for (const auto& route : routing_table) {
+                if (route.next_hop == 0 && route.interface_idx == interface_idx) {
+                    best_idx = route.interface_idx;
+                    next_hop = route.next_hop;
+                    if (debug) printf("Using default route on iface %d\n", best_idx);
+                    break;
+                }
             }
         }
 
-        if (best_idx == -1) {
-            if (debug) printf("No route to %s\n", ip_to_str(ip->dest).c_str());
-            return;
-        }
-
         int out_iface = routing_table[best_idx].interface_idx;
-        uint32_t next_hop = routing_table[best_idx].next_hop;
+        next_hop = routing_table[best_idx].next_hop;
         uint16_t cache_key = ntohs(next_hop & 0xFFFF);
         
         if (arp_cache.count(cache_key)) {

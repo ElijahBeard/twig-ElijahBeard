@@ -234,11 +234,10 @@ void init_routing_table() {
         }
     }
     if (!default_route.empty()) {
-        if (num_interfaces == 1) {
-            fprintf(stderr, "--default-route only for routers\n");
-            exit(1);
-        }
-
+        // if (num_interfaces == 1) {
+        //     fprintf(stderr, "--default-route only for routers\n");
+        //     exit(1);
+        // }
         std::string clean_default_route = default_route;
         size_t pos = clean_default_route.find('_');
         if (pos != std::string::npos) {
@@ -246,7 +245,8 @@ void init_routing_table() {
         }
         uint32_t next_hop = str_to_ip(clean_default_route.c_str());
         if (next_hop == 0) {
-            printf("Invalid default route IP: %s\n",clean_default_route.c_str());
+            fprintf(stderr, "Invalid default route IP: %s\n", clean_default_route.c_str());
+            exit(1);
         }
         int iface_idx = -1;
         for (int i = 0; i < num_interfaces; i++) {
@@ -265,8 +265,8 @@ void init_routing_table() {
         }
         if (iface_idx == -1) {
             fprintf(stderr, "Default route next hop not on any network\n");
-            //exit(1);
-            return;
+            exit(1);
+            //return;
         }
         routing_table.push_back({0, 0, next_hop, 1, iface_idx});
         if (debug) {
