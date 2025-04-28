@@ -174,7 +174,7 @@ void setup_interface(const char* interface_, int interface_idx) {
         exit(1);
     }
 
-    if(debug) printf("setup_interface: swapping endianess!\n");
+    //if(debug) printf("setup_interface: swapping endianess!\n");
 
     if (pfh.magic == PCAP_MAGIC) {  // 0xa1b2c3d4 
         file_is_big_endian = false;
@@ -208,7 +208,7 @@ void print_routing_table() {
     if (!debug) return;
     printf("Routing Table:\n");
     for (const auto& entry : routing_table) {
-        printf("Dest: %s/%d, Next Hop: %s, Metric: %d, Iface: %d\n",
+        printf("\tDest: %s/%d, Next Hop: %s, Metric: %d, Iface: %d\n",
                ip_to_str(entry.dest_ip).c_str(),
                32 - __builtin_clz(entry.mask),
                entry.next_hop ? ip_to_str(entry.next_hop).c_str() : "Direct",
