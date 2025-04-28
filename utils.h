@@ -98,7 +98,7 @@ std::string ip_to_str(uint32_t ip) {
 }
 
 uint32_t calc_network(uint32_t ip, uint32_t mask_length) {
-    uint32_t mask = (0xffffffff << (32 - mask_length)) & 0xffffffff;
+    uint32_t mask = htonl(0xffffffff << (32 - mask_length)) & 0xffffffff;
     return ip & mask;
 }
 
