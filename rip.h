@@ -30,7 +30,7 @@ void send_rip_response(int interface_idx, uint32_t dest) {
     ip.total_length = htons(sizeof(ip) + sizeof(udp_hdr) + sizeof(rip_hdr) + routing_table.size()*sizeof(rip_entry));
     ip.ident = htons(0x2222);
     ip.flags_offset = 0;
-    ip.ttl = 48; // local network
+    ip.ttl = (dest == rip_multicast_addr) ? 1 : 48;
     ip.protocol = 17; // UDP
     ip.checksum = 0;
     ip.src = interfaces[interface_idx].ipv4_addr;

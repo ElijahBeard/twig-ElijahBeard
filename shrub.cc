@@ -163,7 +163,7 @@ int main(int argc, char* argv[]) {
 
     init_routing_table();
 
-    time_t last_rip = time(nullptr) + 2;
+    time_t last_rip = time(nullptr) + 1;
     while(1) {
         fd_set readfds;
         FD_ZERO(&readfds);
